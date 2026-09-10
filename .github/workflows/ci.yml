@@ -2,12 +2,12 @@ name: CI
 on:
   pull_request:
     branches:
-      - master
+      - prototype/ci-base
     paths-ignore:
       - 'docs/**'
   push:
     branches:
-      - master
+      - prototype/ci-base
     paths-ignore:
       - 'docs/**'
 jobs:
@@ -34,7 +34,7 @@ jobs:
         with:
           fetch-depth: 0
       - run: |
-          if [ "`git rev-parse --abbrev-ref HEAD`" != master ]; then git fetch origin master:master; fi
+          git fetch origin prototype/ci-base:prototype/ci-base
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
@@ -67,7 +67,7 @@ jobs:
         with:
           fetch-depth: 0
       - run: |
-          if [ "`git rev-parse --abbrev-ref HEAD`" != master ]; then git fetch origin master:master; fi
+          git fetch origin prototype/ci-base:prototype/ci-base
       - name: Install 32-bit runtime libraries (i386)
         run: |
           sudo dpkg --add-architecture i386
