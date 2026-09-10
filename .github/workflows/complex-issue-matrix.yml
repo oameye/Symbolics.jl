@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - proposal/atomic-symbolic-numbers
+permissions:
+  contents: read
 jobs:
   regressions:
     runs-on: ubuntu-latest
