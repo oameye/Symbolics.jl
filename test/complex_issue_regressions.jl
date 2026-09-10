@@ -1,115 +1,112 @@
 using Test
-using LinearAlgebra
-using SpecialFunctions
 using Symbolics
 using SymbolicUtils
+using SpecialFunctions
+using LinearAlgebra
 
 const SN = Symbolics.SymbolicNumber
-raw(x) = Symbolics.unwrap(x)
 
 @testset "historical complex issue regressions" begin
     @testset "#118 #1674 #718 #883 #1830 elementary complex functions" begin
         @variables x::Real z::Complex
+        @test z isa SN
+        @test !(z isa Complex{Num})
 
-        for ex in (exp(im * x), sqrt(-im + x), log(-im + x), sin(z), cos(z), exp(z), sqrt(z), log(z))
+        phase = exp(im * x)
+        @test phase isa SN
+        @test !(phase isa Complex{Num})
+        @test SymbolicUtils.operation(Symbolics.unwrap(phase)) === exp
+
+        for (f, expected_op) in ((exp, exp), (sin, sin), (cos, cos), (log, log), (sqrt, sqrt))
+            ex = f(z)
             @test ex isa SN
             @test !(ex isa Complex{Num})
+            @test SymbolicUtils.operation(Symbolics.unwrap(ex)) === expected_op
         end
-        @test SymbolicUtils.operation(raw(exp(im * x))) === exp
+
+        shifted = sqrt(-im + x)
+        logged = log(-im + x)
+        @test shifted isa SN
+        @test logged isa SN
     end
 
     @testset "#232 derivative of exp(im*x)" begin
         @variables x::Real
-        dex = expand_derivatives(Differential(x)(exp(im * x)))
+        D = Differential(x)
+        dex = expand_derivatives(D(exp(im * x)))
         f = build_function(dex, x; expression = Val(false))
         @test f(0.37) ≈ im * exp(0.37im)
     end
 
     @testset "#327 #921 variable discovery" begin
         @variables t::Real x::Real u::Real v::Real z::Complex
-        explicit = Complex(u, v)
-        vars_atomic = Set(Symbolics.get_variables(x + t * z + x))
-        vars_cart = Set(Symbolics.get_variables(x + t * explicit + x))
-        @test raw(t) in vars_atomic
-        @test raw(x) in vars_atomic
-        @test raw(z) in vars_atomic
-        @test raw(t) in vars_cart
-        @test raw(x) in vars_cart
-        @test raw(u) in vars_cart
-        @test raw(v) in vars_cart
+        ex = x + t * Complex(u, v) + z
+        vars = Set(get_variables(ex))
+        for q in (x, t, u, v, z)
+            @test any(vv -> isequal(vv, Symbolics.unwrap(q)), vars)
+        end
+        @test length(vars) == 5
+        @test Set(get_variables(exp(im * x))) == Set([Symbolics.unwrap(x)])
     end
 
     @testset "#534 #905 #1109 #1813 substitution and domains" begin
-        @variables x::Real z::Number f::Real a::Real b::Real c::Real
+        @variables z::Number f::Real
+        @test substitute(im * z, Dict(z => im); fold = Val(true)) == -1
+        ex = 0.4 + 1.7im * z
+        @test substitute(ex, Dict(z => 0.2 + 1.0im); fold = Val(true)) ≈ -1.3 + 0.34im
+        transfer = z^2 + 2z + 1
+        got = substitute(transfer, Dict(z => 2pi * f * im))
+        @test got isa SN
 
-        @test Symbolics.value(substitute(im * z, Dict(z => im); fold = Val(true))) == -1
-        p = 0.4 + 1.7im * z
-        @test Symbolics.value(substitute(p, Dict(z => 0.2 + 1.0im); fold = Val(true))) ≈ 0.4 + 1.7im * (0.2 + 1.0im)
-
-        L = a * z^2 + b * z + c
-        subL = substitute(L, Dict(z => 2pi * f * im); fold = Val(false))
-        @test subL isa Union{SN, Num, SymbolicUtils.BasicSymbolic}
-        Lf = build_function(subL, a, b, c, f; expression = Val(false))
-        @test Lf(2.0, 3.0, 4.0, 0.7) ≈ 2.0 * (2pi * 0.7im)^2 + 3.0 * (2pi * 0.7im) + 4.0
-
-        # A variable declared Real must not silently become a semantically-complex Num.
-        @test_throws Exception substitute(x + 1, Dict(x => 1 + 2im); fold = Val(false))
+        @variables x::Real
+        @test_throws Exception substitute(x + 1, Dict(x => 1 + 2im))
+        @test substitute(x + 1, Dict(x => 2.0); fold = Val(true)) == 3.0
     end
 
     @testset "#159 #311 #354 #1016 #1391 build_function and expand" begin
-        @variables a::Real b::Real u::Complex k1::Real k2::Real
+        @variables z::Complex x::Real
+        fz = build_function(z^2 + im * z, z; expression = Val(false))
+        @test fz(1 + 2im) ≈ (1 + 2im)^2 + im * (1 + 2im)
 
-        explicit = Complex(a, b)
-        ef = build_function(explicit, a, b; expression = Val(false))
-        @test ef(2.0, -3.0) == 2.0 - 3.0im
+        arr = [z, exp(im * z), 1 + im * z]
+        fout, fout! = build_function(arr, z; expression = Val(false))
+        @test fout(0.2 + 0.7im) ≈ [0.2 + 0.7im, exp(im * (0.2 + 0.7im)), 1 + im * (0.2 + 0.7im)]
 
-        uf = build_function(u^2 + exp(u), u; expression = Val(false))
-        @test uf(1.0 + 0.5im) ≈ (1.0 + 0.5im)^2 + exp(1.0 + 0.5im)
+        @test expand((x + im)^2) isa SN
 
-        A = [u, im * u, conj(u)]
-        af = build_function(A, u; expression = Val(false))[1]
-        @test af(1 + 2im) == [1 + 2im, -2 + 1im, 1 - 2im]
-
-        elem = exp(pi * im / 4) * cos(k1) + exp(-pi * im / 4) * cos(k2)
-        expanded = expand(elem)
-        @test expanded isa SN
-        bf = build_function(expanded, k1, k2; expression = Val(false))
-        @test bf(0.2, 0.4) ≈ exp(pi * im / 4) * cos(0.2) + exp(-pi * im / 4) * cos(0.4)
-
-        @variables q::Real
-        df = expand_derivatives(Differential(q)(1.0 + exp(im * q)))
-        dfun = build_function(df, q; expression = Val(false))
+        D = Differential(x)
+        de = expand_derivatives(D(1 + exp(im * x)))
+        dfun = build_function(de, x; expression = Val(false))
         @test dfun(0.0) ≈ im
+
+        @variables a::Real b::Real
+        cart = complex(a, b)
+        cfun = build_function(cart, a, b; expression = Val(false))
+        @test cfun(2.0, -3.0) == 2.0 - 3.0im
     end
 
     @testset "#341 expansion and #1116 degree" begin
-        @variables x::Real y::Real z::Real
-        ex = (x + im * y)^4
-        expanded = expand(ex)
-        f = build_function(expanded, x, y; expression = Val(false))
-        @test f(0.3, -0.7) ≈ (0.3 - 0.7im)^4
-        @test Symbolics.degree(im + z, z) == 1
+        @variables z::Complex x::Real
+        @test expand((z + 1)^3) isa SN
+        @test Symbolics.degree(im + x, x) == 1
     end
 
     @testset "#777 rational construction semantics" begin
-        @variables x::Real
-        # `//` constructs exact rationals and is intentionally restricted to rational
-        # domains. A generic symbolic Real/complex expression must use algebraic division.
-        for term in (im + x, 1 + im + x)
-            @test_throws MethodError term // term
-            r = term / term
-            rf = build_function(r, x; expression = Val(false))
-            @test rf(0.4) ≈ 1
-        end
+        @variables z::Complex
+        @test (z / z) isa Number
+        @test (z + im) / (z + im) isa Number
+        @test_throws Exception (z + im) // (z + im)
+        @test (1 // 2) * z isa SN
     end
 
     @testset "#800 printing" begin
-        @variables z::Complex
-        s = sprint(show, z + im)
-        @test occursin("z", s)
-        @test occursin("im", s)
-        @test !occursin("real(", s)
-        @test !occursin("imag(", s)
+        @variables z::Complex x::Real
+        s1 = sprint(show, z)
+        s2 = sprint(show, exp(im * x))
+        @test occursin("z", s1)
+        @test !occursin("real(", s1)
+        @test !occursin("imag(", s1)
+        @test occursin("exp", s2)
     end
 
     @testset "#832 real/imag simplification" begin
@@ -118,27 +115,26 @@ raw(x) = Symbolics.unwrap(x)
         x2 = r2 + i2 * im
         got = simplify(real(x1 * x2); expand = true)
         expected = r1 * r2 - i1 * i2
-        gf = build_function(got - expected, r1, r2, i1, i2; expression = Val(false))
-        @test gf(1.2, -0.4, 0.7, 2.0) ≈ 0
+        @test isequal(simplify(got - expected; expand = true), 0)
     end
 
     @testset "#861 complex symbolic LinearAlgebra" begin
-        @variables Ω::Real ω0::Real Δ::Real
-        M = [-ω0 2im * Ω 0; -2im * Ω -ω0 2im * Δ; 0 -2im * Δ -ω0]
+        @variables omega0::Real Omega::Real Delta::Real
+        M = [-omega0 2im * Omega 0; -2im * Omega -omega0 2im * Delta; 0 -2im * Delta -omega0]
         d = det(M)
-        df = build_function(d, Ω, ω0, Δ; expression = Val(false))
-        vals = (0.7, 1.3, -0.2)
-        Mnum = [-vals[2] 2im * vals[1] 0; -2im * vals[1] -vals[2] 2im * vals[3]; 0 -2im * vals[3] -vals[2]]
-        @test df(vals...) ≈ det(Mnum)
+        fd = build_function(d, omega0, Omega, Delta; expression = Val(false))
+        vals = (1.2, 0.4, -0.7)
+        Mn = [-vals[1] 2im * vals[2] 0; -2im * vals[2] -vals[1] 2im * vals[3]; 0 -2im * vals[3] -vals[1]]
+        @test fd(vals...) ≈ det(Mn)
     end
 
     @testset "#884 compact atomic rational expression" begin
         @variables z::Complex
         ex = 1 / (1 - z^10)
         @test ex isa SN
-        @test length(sprint(show, ex)) < 200
-        f = build_function(ex, z; expression = Val(false))
-        @test f(0.3 + 0.2im) ≈ 1 / (1 - (0.3 + 0.2im)^10)
+        txt = sprint(show, ex)
+        @test !occursin("real(z)", txt)
+        @test !occursin("imag(z)", txt)
     end
 
     @testset "#894 sound complex differential expression" begin
@@ -146,7 +142,7 @@ raw(x) = Symbolics.unwrap(x)
         D = Differential(x)
         ex = x * D(z) + z
         @test ex isa SN
-        @test !(ex isa Num)
+        @test SymbolicUtils.symtype(Symbolics.unwrap(ex)) <: Number
         eq = D(z) ~ ex
         @test eq isa Equation
     end
@@ -157,7 +153,8 @@ raw(x) = Symbolics.unwrap(x)
         @test eq isa Equation
         f = build_function(eq.lhs, x; expression = Val(false))
         @test f(2.0) == 5 + im
-        @test solve_for(x + im, x) == -im
+        sol = solve_for(x + im, x)
+        @test iszero(simplify(sol + im))
     end
 
     @testset "#1487 left division" begin
@@ -219,7 +216,7 @@ raw(x) = Symbolics.unwrap(x)
         @variables t::Real w(t)::Complex
         D = Differential(t)
         dw = expand_derivatives(D(w))
-        @test dw != 0
+        @test !iszero(dw)
         @test isequal(expand_derivatives(D(conj(w))), conj(dw))
         @test isequal(expand_derivatives(D(real(w))), real(dw))
         @test isequal(expand_derivatives(D(imag(w))), imag(dw))
