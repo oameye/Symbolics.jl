@@ -23,3 +23,44 @@ jobs:
             Pkg.add(["ModelingToolkitBase", "OrdinaryDiffEq", "SciMLBase"])
             include(joinpath(repo, "test", "atomic_complex_mtk_probe.jl"))
           '
+
+  sqa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1.13'
+      - name: Remove obsolete IM initialization hook for prototype
+        run: sed -i '/SymbolicUtils.hashcons(IM, true)/d' src/Symbolics.jl
+      - name: Run SQA probe against local Symbolics
+        run: |
+          julia -e '
+            using Pkg
+            repo = pwd()
+            Pkg.activate(; temp = true)
+            Pkg.develop(path = repo)
+            Pkg.add(url = "https://github.com/qojulia/SecondQuantizedAlgebra.jl", rev = "main")
+            include(joinpath(repo, "test", "atomic_complex_sqa_probe.jl"))
+          '
+
+  qc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1.13'
+      - name: Remove obsolete IM initialization hook for prototype
+        run: sed -i '/SymbolicUtils.hashcons(IM, true)/d' src/Symbolics.jl
+      - name: Run QC probe against local Symbolics
+        run: |
+          julia -e '
+            using Pkg
+            repo = pwd()
+            Pkg.activate(; temp = true)
+            Pkg.develop(path = repo)
+            Pkg.add(url = "https://github.com/qojulia/QuantumCumulants.jl", rev = "main")
+            Pkg.add("ModelingToolkitBase")
+            include(joinpath(repo, "test", "atomic_complex_qc_probe.jl"))
+          '
