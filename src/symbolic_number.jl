@@ -1,12 +1,9 @@
 export SymbolicNumber
 
-"""
-    SymbolicNumber
-
-Atomic wrapper for symbolic scalar expressions whose symbolic type is numeric but not
-necessarily real. Unlike `Complex{Num}`, this wrapper does not decompose an expression into
-real and imaginary components. The wrapped `BasicSymbolic` remains a single expression tree.
-"""
+# Atomic wrapper for symbolic scalar expressions whose symbolic type is numeric but not
+# necessarily real. Unlike `Complex{Num}`, this wrapper does not decompose an expression
+# into real and imaginary components. The wrapped `BasicSymbolic` remains one expression
+# tree.
 @symbolic_wrap struct SymbolicNumber <: Number
     val::BasicSymbolic{VartypeT}
 
@@ -41,10 +38,10 @@ Base.imag(x::SymbolicNumber) = wrap(imag(unwrap(x)))
 Base.transpose(x::SymbolicNumber) = wrap(transpose(unwrap(x)))
 Base.adjoint(x::SymbolicNumber) = wrap(adjoint(unwrap(x)))
 
-# Unparameterized `Complex(re, im)` is ordinary scalar construction. When both components
-# are symbolic real scalars, keep the result as one symbolic scalar instead of eagerly
-# changing representation to `Complex{Num}`. Users that explicitly need the Cartesian
-# representation can still request `Complex{Num}(re, im)`.
+# Prototype bridge only. Existing Num/Complex arithmetic frequently finishes by calling
+# `Complex(re::Num, im::Num)`. Redirect that path into one symbolic scalar so we can map
+# the representation dependencies before rewriting those legacy methods individually.
+# Explicit `Complex{Num}(re, im)` remains Cartesian.
 function Base.Complex(re::Num, img::Num)
     return wrap(unwrap(re) + im * unwrap(img))
 end
