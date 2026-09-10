@@ -33,6 +33,8 @@ jobs:
           version: '1.13'
       - name: Remove obsolete IM initialization hook for prototype
         run: sed -i '/SymbolicUtils.hashcons(IM, true)/d' src/Symbolics.jl
+      - name: Clone writable SQA checkout
+        run: git clone --depth 1 --branch main https://github.com/qojulia/SecondQuantizedAlgebra.jl /tmp/SecondQuantizedAlgebra.jl
       - name: Run SQA probe against local Symbolics
         run: |
           julia -e '
@@ -41,10 +43,10 @@ jobs:
             repo = pwd()
             Pkg.activate(; temp = true)
             Pkg.develop(path = repo)
-            Pkg.add(url = "https://github.com/qojulia/SecondQuantizedAlgebra.jl", rev = "main")
-            Pkg.add("SymbolicUtils")
             include(joinpath(repo, "test", "atomic_complex_patch_sqa.jl"))
-            patch_sqa_for_atomic_symbolics!()
+            patch_sqa_for_atomic_symbolics!("/tmp/SecondQuantizedAlgebra.jl")
+            Pkg.develop(path = "/tmp/SecondQuantizedAlgebra.jl")
+            Pkg.add("SymbolicUtils")
             include(joinpath(repo, "test", "atomic_complex_sqa_probe.jl"))
           '
 
@@ -57,6 +59,12 @@ jobs:
           version: '1.13'
       - name: Remove obsolete IM initialization hook for prototype
         run: sed -i '/SymbolicUtils.hashcons(IM, true)/d' src/Symbolics.jl
+      - name: Clone writable QC and SQA checkouts
+        run: |
+          git clone --depth 1 --branch master https://github.com/qojulia/QuantumCumulants.jl /tmp/QuantumCumulants.jl
+          git clone --depth 1 --branch main https://github.com/qojulia/SecondQuantizedAlgebra.jl /tmp/SecondQuantizedAlgebra.jl
+          sed -i 's/SymbolicUtils = "4.40.3 - 4.46.2"/SymbolicUtils = "4.40.3 - 4.46.4"/' /tmp/QuantumCumulants.jl/Project.toml
+          sed -i 's/SecondQuantizedAlgebra = "0.11"/SecondQuantizedAlgebra = "0.11, 0.12"/' /tmp/QuantumCumulants.jl/Project.toml
       - name: Run QC probe against local Symbolics
         run: |
           julia -e '
@@ -65,9 +73,10 @@ jobs:
             repo = pwd()
             Pkg.activate(; temp = true)
             Pkg.develop(path = repo)
-            Pkg.add(url = "https://github.com/qojulia/QuantumCumulants.jl", rev = "master")
-            Pkg.add(["ModelingToolkitBase", "SymbolicUtils"])
             include(joinpath(repo, "test", "atomic_complex_patch_sqa.jl"))
-            patch_sqa_for_atomic_symbolics!()
+            patch_sqa_for_atomic_symbolics!("/tmp/SecondQuantizedAlgebra.jl")
+            Pkg.develop(path = "/tmp/SecondQuantizedAlgebra.jl")
+            Pkg.develop(path = "/tmp/QuantumCumulants.jl")
+            Pkg.add(["ModelingToolkitBase", "SymbolicUtils"])
             include(joinpath(repo, "test", "atomic_complex_qc_probe.jl"))
           '
