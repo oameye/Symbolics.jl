@@ -37,6 +37,9 @@ Base.real(x::SymbolicNumber) = wrap(real(unwrap(x)))
 Base.imag(x::SymbolicNumber) = wrap(imag(unwrap(x)))
 Base.transpose(x::SymbolicNumber) = wrap(transpose(unwrap(x)))
 Base.adjoint(x::SymbolicNumber) = wrap(adjoint(unwrap(x)))
+# `@number_methods` defines `^(::SymbolicNumber, ::Real)`, which intersects Base's
+# `^(::Number, ::Integer)`. Keep integer powers on the symbolic algebra explicitly.
+Base.:^(x::SymbolicNumber, p::Integer) = wrap(unwrap(x)^p)
 
 # Prototype bridge only. Existing Num/Complex arithmetic frequently finishes by calling
 # `Complex(re::Num, im::Num)`. Redirect that path into one symbolic scalar so we can map
