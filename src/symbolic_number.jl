@@ -1,3 +1,5 @@
+import SpecialFunctions: polygamma
+
 # Atomic wrapper for symbolic scalar expressions whose symbolic type is numeric but not
 # necessarily real. Unlike `Complex{Num}`, this wrapper does not decompose an expression
 # into real and imaginary components. The wrapped `BasicSymbolic` remains one expression
@@ -47,8 +49,7 @@ Base.:^(::Irrational{:ℯ}, x::SymbolicNumber) = wrap(exp(unwrap(x)))
 # `polygamma(::Integer, ::Number)` in SpecialFunctions intersects the generic symbolic
 # binary-function methods. This exact intersection keeps integer orders on the symbolic
 # expression path without broadening the dispatch surface.
-SpecialFunctions.polygamma(m::Integer, x::SymbolicNumber) =
-    wrap(SpecialFunctions.polygamma(m, unwrap(x)))
+polygamma(m::Integer, x::SymbolicNumber) = wrap(polygamma(m, unwrap(x)))
 
 # Base implements `cis(::Real)` through `sincos` followed by explicit `Complex`
 # construction. That is appropriate for numerical values but would reintroduce Cartesian
