@@ -1,0 +1,44 @@
+name: complex-v2-diff-cleanup
+
+on:
+  push:
+    branches: [review/atomic-symbolic-complex-v2]
+    paths: [.github/workflows/complex-v2-diff-cleanup.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: review/atomic-symbolic-complex-v2
+      - name: Fold SymbolicNumber differential method into diff.jl
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('src/adtypes.jl')
+          s = p.read_text()
+          prefix = 'include("symbolic_number_diff.jl")\n\n'
+          assert s.startswith(prefix)
+          p.write_text(s[len(prefix):])
+
+          p = Path('src/diff.jl')
+          s = p.read_text()
+          anchor = '(D::Differential)(x::Num) = Num(D(unwrap(x)))\n'
+          line = '(D::Differential)(x::SymbolicNumber) = wrap(D(unwrap(x)))\n'
+          assert anchor in s and line not in s
+          p.write_text(s.replace(anchor, anchor + line, 1))
+
+          Path('src/symbolic_number_diff.jl').unlink()
+          PY
+      - name: Commit cleanup
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A src/adtypes.jl src/diff.jl src/symbolic_number_diff.jl
+          git commit -m 'fold atomic numeric differentiation into diff'
+          git push origin HEAD:review/atomic-symbolic-complex-v2
