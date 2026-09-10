@@ -1,0 +1,145 @@
+name: Apply atomic symbolic source cleanup
+on:
+  push:
+    branches:
+      - proposal/atomic-symbolic-numbers
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Consolidate proven source changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # Num must satisfy the Julia supertype it advertises.
+          p = Path('src/num.jl')
+          s = p.read_text()
+          old = '''    function Num(ex::BasicSymbolic{VartypeT})
+                  # need `<: Number` instead of `<: Real` to allow the primitive `@number_methods`
+                  # methods below to infer. They could be made to infer `Union{Complex{Num}, Num}`
+                  # by manually checking the `symtype` of the result and branching instead of using
+                  # `wrap`. However, this causes issues with LinearAlgebra methods because it
+                  # preallocates a buffer using the inferred result type, and then tries to
+                  # e.g. set an integer into it, which fails because `convert(::Type{Union{..}}, ::T)`
+                  # doesn't work.
+                  @assert symtype(ex) <: Number
+                  return new(Const{VartypeT}(ex))
+              end
+              function Num(ex::Number)
+                  return new(Const{VartypeT}(unwrap(ex)))
+              end
+          '''
+          new = '''    function Num(ex::BasicSymbolic{VartypeT})
+                  @assert symtype(ex) <: Real
+                  return new(Const{VartypeT}(ex))
+              end
+              function Num(ex::Number)
+                  raw = unwrap(ex)
+                  @assert symtype(raw) <: Real
+                  return new(Const{VartypeT}(raw))
+              end
+          '''
+          if old in s:
+              s = s.replace(old, new, 1)
+          elif new not in s:
+              raise SystemExit('Num constructor block not found')
+
+          # Ordinary Num/numerical-Complex arithmetic is now handled atomically in complex.jl.
+          marker = 'for C in [Complex, Complex{Bool}]'
+          if marker in s:
+              start = s.index(marker)
+              stop = s.index('function Base.inv(z::Complex{Num})', start)
+              s = s[:start] + s[stop:]
+
+          s = s.replace(
+              'Base.promote_rule(::Type{Complex{Num}}, ::Type{Num}) = Complex{Num}\n',
+              'Base.promote_rule(::Type{Complex{Num}}, ::Type{Num}) = Complex{Num}\nBase.promote_rule(::Type{Num}, ::Type{Complex{Num}}) = Complex{Num}\n',
+              1,
+          )
+          s = s.replace(
+              'Base.promote_rule(::Type{T}, ::Type{Num}) where {T <: Number} = Num',
+              'Base.promote_rule(::Type{T}, ::Type{Num}) where {T <: Real} = Num',
+              1,
+          )
+          p.write_text(s)
+
+          # Keep explicit Cartesian Complex{Num}, but route ordinary complex arithmetic through
+          # BasicSymbolic and choose the wrapper from the result symtype.
+          p = Path('src/complex.jl')
+          s = p.read_text().replace('include("atomic_complex_arithmetic_probe.jl")\n', '')
+          oldprom = '''Base.promote_rule(::Type{Complex{T}}, ::Type{S}) where {T<:Real, S<:Num} =  Complex{S} # 283
+          Base.promote_rule(::Type{Complex{T}}, ::Type{Num}) where {T <: Real} = Complex{Num}
+          '''
+          newprom = '''Base.promote_rule(::Type{Complex{T}}, ::Type{Num}) where {T <: Real} = SymbolicNumber
+          Base.promote_rule(::Type{Num}, ::Type{Complex{T}}) where {T <: Real} = SymbolicNumber
+          '''
+          if oldprom in s:
+              s = s.replace(oldprom, newprom, 1)
+          elif newprom not in s:
+              raise SystemExit('complex promotion block not found')
+          atomic = '''
+          # A numerical complex coefficient does not imply Cartesian symbolic storage. Build the
+          # operation in BasicSymbolic and select Num/SymbolicNumber from its resulting symtype.
+          for C in (Complex, Complex{Bool})
+              @eval begin
+                  Base.:+(x::Num, z::$C) = wrap(unwrap(x) + z)
+                  Base.:+(z::$C, x::Num) = wrap(z + unwrap(x))
+                  Base.:-(x::Num, z::$C) = wrap(unwrap(x) - z)
+                  Base.:-(z::$C, x::Num) = wrap(z - unwrap(x))
+                  Base.:*(x::Num, z::$C) = wrap(unwrap(x) * z)
+                  Base.:*(z::$C, x::Num) = wrap(z * unwrap(x))
+                  Base.:/(x::Num, z::$C) = wrap(unwrap(x) / z)
+                  Base.:/(z::$C, x::Num) = wrap(z / unwrap(x))
+              end
+          end
+          '''
+          anchor = newprom
+          if atomic.strip() not in s:
+              s = s.replace(anchor, anchor + atomic, 1)
+          p.write_text(s)
+
+          # Wider numeric values paired with Num select the wide symbolic wrapper. More-specific
+          # Real and explicit Complex{Num} rules continue to win.
+          p = Path('src/symbolic_number.jl')
+          s = p.read_text()
+          promote_anchor = 'Base.promote_rule(::Type{SymbolicNumber}, ::Type{Num}) = SymbolicNumber\n'
+          wide = '''Base.promote_rule(::Type{T}, ::Type{Num}) where {T <: Number} = SymbolicNumber
+          Base.promote_rule(::Type{Num}, ::Type{T}) where {T <: Number} = SymbolicNumber
+          '''
+          if wide.strip() not in s:
+              s = s.replace(promote_anchor, promote_anchor + wide, 1)
+          lu = '''
+          function LinearAlgebra.lu(
+                  x::Union{Adjoint{<:SymbolicNumber}, Transpose{<:SymbolicNumber}, Array{<:SymbolicNumber}};
+                  check = true, kw...)
+              sym_lu(x; check = check)
+          end
+          '''
+          if lu.strip() not in s:
+              s += '\n' + lu
+          p.write_text(s)
+
+          # The fake symbolic imaginary unit has been removed; no init-time hashcons hook remains.
+          p = Path('src/Symbolics.jl')
+          s = p.read_text().replace('    SymbolicUtils.hashcons(IM, true)\n', '')
+          p.write_text(s)
+
+          probe = Path('src/atomic_complex_arithmetic_probe.jl')
+          if probe.exists():
+              probe.unlink()
+          PY
+          if git diff --quiet -- src; then
+            echo 'Already consolidated'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A src
+          git commit -m 'refactor: make symbolic complex scalars atomic'
+          git push
