@@ -18,6 +18,7 @@ jobs:
           julia --project=. -e 'using Pkg;
           Pkg.add(PackageSpec(url="https://github.com/oameye/SymbolicUtils.jl",
           rev="10ebd6183a7c98b707f1417ce026d39a41e074e9"));
+          Pkg.add(PackageSpec(name="Nemo"));
           Pkg.instantiate()'
       - name: Historical complex regressions
         run: julia --project=. test/complex_issue_regressions.jl
