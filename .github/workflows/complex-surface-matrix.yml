@@ -17,7 +17,7 @@ jobs:
         run: >-
           julia --project=. -e 'using Pkg;
           Pkg.add(PackageSpec(url="https://github.com/oameye/SymbolicUtils.jl",
-          rev="10ebd6183a7c98b707f1417ce026d39a41e074e9"));
+          rev="126d7139def26e95bece91bb4a2b342767d76aab"));
           Pkg.add([PackageSpec(name="Latexify"), PackageSpec(name="LaTeXStrings")]);
           Pkg.instantiate()'
       - name: Complex feature surfaces
