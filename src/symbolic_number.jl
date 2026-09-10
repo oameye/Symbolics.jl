@@ -80,6 +80,19 @@ function Base.show(io::IO, x::SymbolicNumber)
     show(io, unwrap_const(unwrap(x)))
 end
 
+# Generic symbolic utilities must select the wrapper from the transformed expression's
+# resulting symtype. In particular, a simplification is allowed to narrow a
+# complex-capable expression to a provably real `Num`.
+SymbolicUtils.simplify(x::SymbolicNumber; kw...) = wrap(SymbolicUtils.simplify(unwrap(x); kw...))
+SymbolicUtils.simplify_fractions(x::SymbolicNumber; kw...) = wrap(SymbolicUtils.simplify_fractions(unwrap(x); kw...))
+SymbolicUtils.expand(x::SymbolicNumber) = wrap(SymbolicUtils.expand(unwrap(x)))
+SymbolicUtils.Code.toexpr(x::SymbolicNumber) = SymbolicUtils.Code.toexpr(unwrap(x))
+SymbolicUtils.setmetadata(x::SymbolicNumber, t, v) = wrap(SymbolicUtils.setmetadata(unwrap(x), t, v))
+SymbolicUtils.getmetadata(x::SymbolicNumber, t) = SymbolicUtils.getmetadata(unwrap(x), t)
+SymbolicUtils.hasmetadata(x::SymbolicNumber, t) = SymbolicUtils.hasmetadata(unwrap(x), t)
+Broadcast.broadcastable(x::SymbolicNumber) = x
+SymbolicUtils.scalarize(x::SymbolicNumber) = wrap(SymbolicUtils.scalarize(unwrap(x)))
+
 function SymbolicUtils.search_variables!(buffer, expr::SymbolicNumber; kw...)
     SymbolicUtils.search_variables!(buffer, unwrap(expr); kw...)
 end
