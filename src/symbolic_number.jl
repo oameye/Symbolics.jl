@@ -113,6 +113,9 @@ end
 SymbolicIndexingInterface.symbolic_type(::Type{SymbolicNumber}) = ScalarSymbolic()
 SymbolicIndexingInterface.hasname(x::SymbolicNumber) = hasname(unwrap(x))
 SymbolicIndexingInterface.getname(x::SymbolicNumber) = getname(unwrap(x))
+function SymbolicIndexingInterface.symbolic_evaluate(x::SymbolicNumber, d::Dict; kw...)
+    SymbolicIndexingInterface.symbolic_evaluate(unwrap(x), d; kw...)
+end
 
 function (s::SymbolicUtils.Substituter)(x::SymbolicNumber)
     wrap(s(unwrap(x)))
