@@ -38,8 +38,15 @@ Base.imag(x::SymbolicNumber) = wrap(imag(unwrap(x)))
 Base.transpose(x::SymbolicNumber) = wrap(transpose(unwrap(x)))
 Base.adjoint(x::SymbolicNumber) = wrap(adjoint(unwrap(x)))
 # `@number_methods` defines `^(::SymbolicNumber, ::Real)`, which intersects Base's
-# `^(::Number, ::Integer)`. Keep integer powers on the symbolic algebra explicitly.
+# integer/rational power methods. Keep those powers on the symbolic algebra explicitly.
 Base.:^(x::SymbolicNumber, p::Integer) = wrap(unwrap(x)^p)
+Base.:^(x::SymbolicNumber, p::Rational) = wrap(unwrap(x)^p)
+
+# Base implements `cis(::Real)` through `sincos` followed by explicit `Complex`
+# construction. That is appropriate for numerical values but would reintroduce Cartesian
+# storage for `Num`. Canonically lower symbolic `cis` to the equivalent atomic scalar
+# expression instead.
+Base.cis(x::Num) = wrap(exp(im * unwrap(x)))
 
 Base.iszero(x::SymbolicNumber) = SymbolicUtils._iszero(unwrap(x))
 Base.isone(x::SymbolicNumber) = SymbolicUtils._isone(unwrap(x))
