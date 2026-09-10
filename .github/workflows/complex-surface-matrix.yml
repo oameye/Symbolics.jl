@@ -1,0 +1,24 @@
+name: Complex surface regression matrix
+on:
+  push:
+    branches:
+      - proposal/atomic-symbolic-numbers
+permissions:
+  contents: read
+jobs:
+  surfaces:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1.13'
+      - name: Instantiate stacked complex implementation and Latexify
+        run: >-
+          julia --project=. -e 'using Pkg;
+          Pkg.add(PackageSpec(url="https://github.com/oameye/SymbolicUtils.jl",
+          rev="10ebd6183a7c98b707f1417ce026d39a41e074e9"));
+          Pkg.add([PackageSpec(name="Latexify"), PackageSpec(name="LaTeXStrings")]);
+          Pkg.instantiate()'
+      - name: Complex feature surfaces
+        run: julia --project=. test/complex_surface_regressions.jl
