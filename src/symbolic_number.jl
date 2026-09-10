@@ -61,7 +61,16 @@ Base.promote_rule(::Type{Num}, ::Type{SymbolicNumber}) = SymbolicNumber
 Base.promote_rule(::Type{SymbolicNumber}, ::Type{Num}) = SymbolicNumber
 Base.convert(::Type{SymbolicNumber}, x::Number) = SymbolicNumber(x)
 
+# Wrappers are representation boundaries, not distinct symbolic identities. Matching the
+# wrapped expression's hash and `isequal` semantics is required by generic substitution,
+# which recursively visits raw `BasicSymbolic` nodes while users naturally provide wrapped
+# variables as dictionary keys.
 Base.hash(x::SymbolicNumber, h::UInt) = hash(unwrap(x), h)::UInt
+Base.isequal(a::SymbolicNumber, b::SymbolicNumber) = isequal(unwrap(a), unwrap(b))
+Base.isequal(a::SymbolicNumber, b::BasicSymbolic) = isequal(unwrap(a), b)
+Base.isequal(a::BasicSymbolic, b::SymbolicNumber) = isequal(a, unwrap(b))
+Base.isequal(a::SymbolicNumber, b::Num) = isequal(unwrap(a), unwrap(b))
+Base.isequal(a::Num, b::SymbolicNumber) = isequal(unwrap(a), unwrap(b))
 
 function Base.show(io::IO, x::SymbolicNumber)
     warn_load_latexify()
