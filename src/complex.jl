@@ -86,3 +86,4 @@ end
 
 Base.:^(z::Complex{Num}, p::AbstractFloat) = _cartesian_pow(z, p)
 Base.:^(z::Complex{Num}, p::Rational) = _cartesian_pow(z, p)
+Base.:^(z::Complex{Num}, p::Num) = _cartesian_pow(z, p)
