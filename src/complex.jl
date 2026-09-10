@@ -1,5 +1,9 @@
 include("symbolic_number.jl")
 
+# Complete set of public scalar wrapper representations. `Complex{Num}` remains the
+# explicit Cartesian form; `SymbolicNumber` is the atomic Number-valued form.
+const SymbolicScalar = Union{Num, SymbolicNumber, Complex{Num}}
+
 SymbolicUtils.promote_symtype(::typeof(imag), ::Type{Complex{T}}) where {T} = T
 Base.promote_rule(::Type{Complex{T}}, ::Type{Num}) where {T <: Real} = SymbolicNumber
 Base.promote_rule(::Type{Num}, ::Type{Complex{T}}) where {T <: Real} = SymbolicNumber
