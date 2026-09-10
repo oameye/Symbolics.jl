@@ -1,3 +1,5 @@
+export SymbolicNumber
+
 """
     SymbolicNumber
 
@@ -68,6 +70,10 @@ end
 function SymbolicUtils.search_variables!(buffer, expr::SymbolicNumber; kw...)
     SymbolicUtils.search_variables!(buffer, unwrap(expr); kw...)
 end
+
+SymbolicIndexingInterface.symbolic_type(::Type{SymbolicNumber}) = ScalarSymbolic()
+SymbolicIndexingInterface.hasname(x::SymbolicNumber) = hasname(unwrap(x))
+SymbolicIndexingInterface.getname(x::SymbolicNumber) = getname(unwrap(x))
 
 function (s::SymbolicUtils.Substituter)(x::SymbolicNumber)
     wrap(s(unwrap(x)))
