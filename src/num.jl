@@ -253,6 +253,7 @@ Base.promote_rule(::Type{Complex{Num}}, ::Type{Num}) = Complex{Num}
 Base.promote_rule(::Type{Num}, ::Type{Complex{Num}}) = Complex{Num}
 Base.promote_rule(::Type{Num}, ::Type{Complex{Num}}) = Complex{Num}
 Base.promote_rule(::Type{Num}, ::Type{Complex{Num}}) = Complex{Num}
+Base.promote_rule(::Type{Num}, ::Type{Complex{Num}}) = Complex{Num}
 function Base.inv(z::Complex{Num})
     a, b = reim(z)
     den = a^2 + b^2
