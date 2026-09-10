@@ -5,7 +5,53 @@ using SymbolicIndexingInterface: getname, hasname
 
 @variables a b::Real z::Complex (Z::Complex)[1:10]
 
-@testset "atomic complex scalar types" begin
+@testset "legacy Complex{Num} contracts" begin
+    @test a isa Num
+    @test b isa Num
+    @test eltype(Z) <: Complex{Num}
+
+    for x in [z, Z[1], z+a, z*a, z^2, z/z] # z/z is sus
+        @test x isa Complex{Num}
+        @test real(x) isa Num
+        @test imag(x) isa Num
+        @test conj(x) isa Complex{Num}
+    end
+
+    # issue #314
+    bi = a+a*im
+    bs = substitute(bi, (Dict(a=>1.0))) # returns 1.0 + im
+    @test bs isa Complex{Num}
+    bv = unwrap_const(Symbolics.value(bs))
+    @test typeof(bv) == ComplexF64
+end
+
+@testset "legacy repr" begin
+    @test repr(z) == "z"
+    @test repr(a + b*im) == "a + b*im"
+end
+
+@testset "legacy metadata" begin
+    z1 = z+1.0
+    @test_nowarn substitute(z1, z=>1.0im)
+    @test metadata(z1) == unwrap(z1.im).metadata
+    @test metadata(z1) == unwrap(z1.re).metadata
+    z2 = 1.0 + z*im
+    @test isnothing(metadata(unwrap(z1.re)))
+end
+
+@testset "legacy getname" begin
+    @variables t a b x::Complex y(t)::Complex z(a, b)::Complex
+    @test hasname(x)
+    @test getname(x) == :x
+    @test hasname(y)
+    @test getname(y) == :y
+    @test hasname(z)
+    @test getname(z) == :z
+    @test !hasname(2x)
+    @test !hasname(x + y)
+end
+
+@testset "atomic complex scalar invariants" begin
     @test a isa Num
     @test b isa Num
     @test z isa Symbolics.SymbolicNumber
@@ -50,8 +96,7 @@ end
     @test f(2.0) == 2.0im
 end
 
-@testset "substitution" begin
-    # issue #314, but without changing representation to Complex{Num}
+@testset "atomic substitution" begin
     bi = a + a * im
     @test bi isa Symbolics.SymbolicNumber
 
@@ -62,21 +107,19 @@ end
     @test typeof(bv) == ComplexF64
 end
 
-@testset "compact representation" begin
+@testset "compact atomic representation" begin
     @test repr(z) == "z"
     @test repr(a + b * im) == "a + b*im"
     @test repr(exp(im * a)) == "exp(im*a)" || repr(exp(im * a)) == "exp(a*im)"
 end
 
-@testset "metadata" begin
-    # Complex variables are now single symbolic variables, so their metadata lives on the
-    # atomic tree rather than being duplicated onto synthetic `.re` and `.im` components.
+@testset "atomic metadata" begin
     @variables x::Complex
     @test !isnothing(metadata(unwrap(x)))
     @test_nowarn substitute(x + 1.0, x => 1.0im)
 end
 
-@testset "getname" begin
+@testset "atomic getname" begin
     @variables t a b x::Complex y(t)::Complex z(a, b)::Complex
     @test hasname(x)
     @test getname(x) == :x
