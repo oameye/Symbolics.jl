@@ -100,8 +100,3 @@ function (s::SymbolicUtils.Substituter)(x::SymbolicNumber)
 end
 
 
-function LinearAlgebra.lu(
-        x::Union{Adjoint{<:SymbolicNumber}, Transpose{<:SymbolicNumber}, Array{<:SymbolicNumber}};
-        check = true, kw...)
-    sym_lu(x; check = check)
-end
