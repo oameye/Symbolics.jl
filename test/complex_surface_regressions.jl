@@ -23,6 +23,17 @@ const SN = Symbolics.SymbolicNumber
         @test df(0.37) ≈ im * cis(0.37)
     end
 
+    @testset "#1674 compact conjugated complex exponential differentiation" begin
+        @variables y::Real
+        D = Differential(y)
+        phase = exp(im * y)
+        @test phase isa SN
+        dex = expand_derivatives(D(conj(phase)))
+        @test !Symbolics.is_derivative(dex)
+        f = build_function(dex, y; expression = Val(false))
+        @test f(0.37) ≈ conj(im * exp(0.37im))
+    end
+
     @testset "#389 #416 complex Latexify" begin
         # Exact raw SymbolicUtils-style MWE from #416.
         @syms sx::Real
