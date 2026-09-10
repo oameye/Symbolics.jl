@@ -53,6 +53,7 @@ end
 
 (D::Differential)(::Union{AbstractFloat, Integer}) = Num(COMMON_ZERO)
 (D::Differential)(x::Num) = Num(D(unwrap(x)))
+(D::Differential)(x::SymbolicNumber) = wrap(D(unwrap(x)))
 (D::Differential)(x::Arr{T, N}) where {T, N} = Arr{T, N}(D(unwrap(x)))
 (D::Differential)(x::Complex{Num}) = Complex{Num}(Num(D(unwrap(real(x)))), Num(D(unwrap(imag(x)))))
 SymbolicUtils.isbinop(f::Differential) = false
