@@ -1,4 +1,5 @@
 include("symbolic_number.jl")
+include("atomic_complex_arithmetic_probe.jl")
 
 SymbolicUtils.promote_symtype(::typeof(imag), ::Type{Complex{T}}) where {T} = T
 Base.promote_rule(::Type{Complex{T}}, ::Type{S}) where {T<:Real, S<:Num} =  Complex{S} # 283
