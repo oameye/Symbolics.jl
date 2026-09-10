@@ -36,11 +36,18 @@ I = Integral(x in ClosedInterval(a, b))
 @test isequal(I(pi), pi*(b - a))
 @test isequal(I(1//2), 1//2 * (b - a))
 
-# test complex integrand
-@test I(2im) isa Complex{Num}
+# General complex integrands stay atomic. Explicit Cartesian values stay Cartesian.
+const SN = Symbolics.SymbolicNumber
+@test I(2im) isa SN
+@test !(I(2im) isa Complex{Num})
 @test isequal(I(2im), 2im * (b - a))
 @test isequal(I(1 + 2.1im), (1 + 2.1im)*(b - a))
-@test I(x + im*x) isa Complex{Num}
+@test I(x + im*x) isa SN
+@variables z::Number
+@test I(z) isa SN
+w = Complex(x, y)
+@test w isa Complex{Num}
+@test I(w) isa Complex{Num}
 
 D = Differential(x)
 Dxx = Differential(x)^2
