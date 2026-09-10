@@ -55,6 +55,10 @@ Base.one(::Type{SymbolicNumber}) = SymbolicNumber(1)
 
 Base.promote_rule(::Type{T}, ::Type{SymbolicNumber}) where {T <: Number} = SymbolicNumber
 Base.promote_rule(::Type{SymbolicNumber}, ::Type{T}) where {T <: Number} = SymbolicNumber
+# `Num` also has a broad `promote_rule(::Type{T}, ::Type{Num}) where T <: Number`.
+# State the cross-wrapper edge explicitly so the promotion lattice is deterministic.
+Base.promote_rule(::Type{Num}, ::Type{SymbolicNumber}) = SymbolicNumber
+Base.promote_rule(::Type{SymbolicNumber}, ::Type{Num}) = SymbolicNumber
 Base.convert(::Type{SymbolicNumber}, x::Number) = SymbolicNumber(x)
 
 Base.hash(x::SymbolicNumber, h::UInt) = hash(unwrap(x), h)::UInt
