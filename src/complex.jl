@@ -23,6 +23,12 @@ for C in (Complex, Complex{Bool})
     end
 end
 
+# Concrete complex coefficients raised to symbolic real powers are still one symbolic
+# scalar. This more-specific method bypasses Base's numerical Complex power machinery
+# without changing the semantics of explicitly Cartesian `Complex{Num}` values.
+const ConcreteReal = Union{AbstractFloat, Integer, Rational, AbstractIrrational}
+Base.:^(a::Complex{T}, b::Num) where {T <: ConcreteReal} = wrap(term(^, a, unwrap(b)))
+
 # `Complex{Num}` remains a supported explicit Cartesian representation, but it is no
 # longer selected by `wrap` for symbolic complex scalars. `SymbolicNumber <: Number`
 # handles those atomically via the generic symbolic-wrapper dispatch.
@@ -65,3 +71,18 @@ end
 function (s::SymbolicUtils.Substituter)(x::Complex{Num})
     Complex{Num}(s(real(x)), s(imag(x)))
 end
+
+# Explicit Cartesian symbolic values retain Cartesian output for noninteger real powers.
+# Use the principal polar branch instead of Base's numerical Complex implementation,
+# whose boolean control flow is not valid for symbolic components.
+function _cartesian_pow(z::Complex{Num}, p::Real)
+    a, b = reim(z)
+    r = sqrt(a^2 + b^2)
+    θ = atan(b, a)
+    rp = r^p
+    pθ = p * θ
+    return Complex(rp * cos(pθ), rp * sin(pθ))
+end
+
+Base.:^(z::Complex{Num}, p::AbstractFloat) = _cartesian_pow(z, p)
+Base.:^(z::Complex{Num}, p::Rational) = _cartesian_pow(z, p)
