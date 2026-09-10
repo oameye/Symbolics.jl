@@ -1,0 +1,23 @@
+name: Atomic complex strict Num
+on:
+  push:
+    branches:
+      - prototype/atomic-complex-strict-num
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1.13'
+      - name: Enforce strict Num invariant for probe
+        run: |
+          sed -i '0,/@assert symtype(ex) <: Number/s//@assert symtype(ex) <: Real/' src/num.jl
+          sed -i '/SymbolicUtils.hashcons(IM, true)/d' src/Symbolics.jl
+      - name: Instantiate
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+      - name: Atomic complex regression corpus
+        run: julia --project=. test/atomic_complex_probe.jl
+      - name: Strict Num and LinearAlgebra probe
+        run: julia --project=. test/strict_num_probe.jl
