@@ -1,16 +1,12 @@
 using Pkg
 
 """
-Patch a temporary installed/developed SecondQuantizedAlgebra checkout just enough to let
-its current code run against the atomic Symbolics prototype. This is test scaffolding, not
-an upstream SQA change: it deliberately removes only representation assumptions that the
-new Symbolics API is meant to obsolete.
+Patch a temporary SecondQuantizedAlgebra checkout just enough to let its current code run
+against the atomic Symbolics prototype. This is test scaffolding, not an upstream SQA
+change: it deliberately removes only representation assumptions that the new Symbolics
+API is meant to obsolete.
 """
-function patch_sqa_for_atomic_symbolics!()
-    info = only(v for v in values(Pkg.dependencies()) if v.name == "SecondQuantizedAlgebra")
-    src = info.source
-    src === nothing && error("SecondQuantizedAlgebra source path unavailable")
-
+function patch_sqa_for_atomic_symbolics!(src::AbstractString)
     # SQA currently uses Symbolics.IM solely to avoid the eager Complex{Num} path. With an
     # atomic numeric wrapper, Base.im is the intended literal coefficient.
     for (root, _, files) in walkdir(joinpath(src, "src"))
@@ -34,4 +30,11 @@ function patch_sqa_for_atomic_symbolics!()
     end
 
     return src
+end
+
+function patch_sqa_for_atomic_symbolics!()
+    info = only(v for v in values(Pkg.dependencies()) if v.name == "SecondQuantizedAlgebra")
+    src = info.source
+    src === nothing && error("SecondQuantizedAlgebra source path unavailable")
+    return patch_sqa_for_atomic_symbolics!(src)
 end
