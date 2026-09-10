@@ -20,7 +20,7 @@ jobs:
             repo = pwd()
             Pkg.activate(; temp = true)
             Pkg.develop(path = repo)
-            Pkg.add(["ModelingToolkitBase", "OrdinaryDiffEq", "SciMLBase"])
+            Pkg.add(["ModelingToolkitBase", "OrdinaryDiffEq", "SciMLBase", "SymbolicUtils"])
             include(joinpath(repo, "test", "atomic_complex_mtk_probe.jl"))
           '
 
@@ -37,10 +37,14 @@ jobs:
         run: |
           julia -e '
             using Pkg
+            ENV["JULIA_PKG_PRECOMPILE_AUTO"] = "0"
             repo = pwd()
             Pkg.activate(; temp = true)
             Pkg.develop(path = repo)
             Pkg.add(url = "https://github.com/qojulia/SecondQuantizedAlgebra.jl", rev = "main")
+            Pkg.add("SymbolicUtils")
+            include(joinpath(repo, "test", "atomic_complex_patch_sqa.jl"))
+            patch_sqa_for_atomic_symbolics!()
             include(joinpath(repo, "test", "atomic_complex_sqa_probe.jl"))
           '
 
@@ -57,10 +61,13 @@ jobs:
         run: |
           julia -e '
             using Pkg
+            ENV["JULIA_PKG_PRECOMPILE_AUTO"] = "0"
             repo = pwd()
             Pkg.activate(; temp = true)
             Pkg.develop(path = repo)
-            Pkg.add(url = "https://github.com/qojulia/QuantumCumulants.jl", rev = "main")
-            Pkg.add("ModelingToolkitBase")
+            Pkg.add(url = "https://github.com/qojulia/QuantumCumulants.jl", rev = "master")
+            Pkg.add(["ModelingToolkitBase", "SymbolicUtils"])
+            include(joinpath(repo, "test", "atomic_complex_patch_sqa.jl"))
+            patch_sqa_for_atomic_symbolics!()
             include(joinpath(repo, "test", "atomic_complex_qc_probe.jl"))
           '
