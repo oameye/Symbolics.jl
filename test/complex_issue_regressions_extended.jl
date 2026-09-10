@@ -1,6 +1,7 @@
 using Test
 using Symbolics
 using SymbolicUtils
+using Nemo
 
 const SN = Symbolics.SymbolicNumber
 
