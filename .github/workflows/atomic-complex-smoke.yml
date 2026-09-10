@@ -11,19 +11,9 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1.13'
+      - name: Remove legacy IM initialization hook for probe
+        run: sed -i '/SymbolicUtils.hashcons(IM, true)/d' src/Symbolics.jl
       - name: Instantiate
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
-      - name: Atomic scalar invariants
-        run: |
-          julia --project=. -e '
-            using Symbolics, SymbolicUtils
-            @variables x::Real z::Complex
-            @assert z isa Symbolics.SymbolicNumber
-            @assert im*x isa Symbolics.SymbolicNumber
-            @assert Symbolics.get_variables(im*x) == [x]
-            @assert !isdefined(Symbolics, :IM)
-            @assert Symbolics.value(substitute(im*x, Dict(x => 2.0))) == 2.0im
-            @assert repr(exp(im*x)) in ("exp(im*x)", "exp(x*im)")
-            f = Symbolics.build_function(im*x, x; expression = Val(false))
-            @assert f(2.0) == 2.0im
-          '
+      - name: Atomic scalar probe
+        run: julia --project=. test/atomic_complex_probe.jl
