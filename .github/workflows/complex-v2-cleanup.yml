@@ -1,0 +1,42 @@
+name: complex-v2-cleanup
+
+on:
+  push:
+    branches: [review/atomic-symbolic-complex-v2]
+    paths: [.github/workflows/complex-v2-cleanup.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: review/atomic-symbolic-complex-v2
+      - name: Remove obsolete complex implementation seams
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('src/solver/main.jl')
+          s = p.read_text()
+          old = 'Base.:^(a::Complex{<:Real}, b::Num) = Symbolics.Pow(a, b)\n'
+          assert s.startswith(old), 'obsolete Symbolics.Pow method not found at file start'
+          p.write_text(s[len(old):])
+
+          p = Path('ext/SymbolicsLatexifyExt.jl')
+          s = p.read_text()
+          old = 'elseif op isa Integral\n        lower = op.domain.domain\n        lower = op.domain.domain.left'
+          new = 'elseif op isa Integral\n        lower = op.domain.domain.left'
+          assert old in s, 'redundant Integral lower assignment not found'
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Commit cleanup
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/solver/main.jl ext/SymbolicsLatexifyExt.jl
+          git commit -m 'remove obsolete complex implementation seams'
+          git push origin HEAD:review/atomic-symbolic-complex-v2
