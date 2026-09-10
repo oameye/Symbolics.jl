@@ -287,7 +287,6 @@ function _toexpr_plain(O; latexwrapper = default_latex_wrapper)
         return :(_derivative($(_toexpr(num)), $den, $deg))
 
     elseif op isa Integral
-        lower = op.domain.domain
         lower = op.domain.domain.left
         upper = op.domain.domain.right
         vars = op.domain.variables
