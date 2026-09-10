@@ -36,11 +36,18 @@ end
     @test symtype(unwrap(ia)) <: Number
     @test !isdefined(Symbolics, :IM)
 
+    # `im` is a coefficient, never a free symbolic variable.
+    @test Symbolics.get_variables(ai) == [a]
+    @test Symbolics.get_variables(ia) == [a]
+
     @test repr(ai) == "a*im" || repr(ai) == "im*a"
     @test repr(ia) == "a*im" || repr(ia) == "im*a"
 
     @test Symbolics.value(substitute(ai, Dict(a => 2.0))) == 2.0im
     @test Symbolics.value(substitute(ia, Dict(a => 2.0))) == 2.0im
+
+    f = Symbolics.build_function(ai, a; expression = Val(false))
+    @test f(2.0) == 2.0im
 end
 
 @testset "substitution" begin
