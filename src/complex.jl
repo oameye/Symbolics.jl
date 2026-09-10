@@ -1,14 +1,15 @@
+include("symbolic_number.jl")
+
 SymbolicUtils.promote_symtype(::typeof(imag), ::Type{Complex{T}}) where {T} = T
 Base.promote_rule(::Type{Complex{T}}, ::Type{S}) where {T<:Real, S<:Num} =  Complex{S} # 283
 Base.promote_rule(::Type{Complex{T}}, ::Type{Num}) where {T <: Real} = Complex{Num}
 
+# `Complex{Num}` remains a supported explicit Cartesian representation, but it is no
+# longer selected by `wrap` for symbolic complex scalars. `SymbolicNumber <: Number`
+# handles those atomically via the generic symbolic-wrapper dispatch.
 is_wrapper_type(::Type{Complex{Num}}) = true
-has_symwrapper(::Type{<:Complex{T}}) where {T<:Real} = true
 wraps_type(::Type{Complex{Num}}) = Complex{Real}
 iswrapped(::Complex{Num}) = true
-function wrapper_type(::Type{Complex{T}}) where T
-    Symbolics.has_symwrapper(T) ? Complex{wrapper_type(T)} : Complex{T}
-end
 
 function SymbolicUtils.unwrap(a::Complex{<:Num})
     re, img = unwrap(real(a)), unwrap(imag(a))
@@ -28,8 +29,6 @@ function Base.Complex{Num}(x::BasicSymbolic{VartypeT})
     Complex{Num}(wrap(real(x)), wrap(imag(x)))
 end
 
-const IM = Sym{VartypeT}(:im; type = Number)
-
 function Base.show(io::IO, a::Complex{Num})
     rr = unwrap(real(a))
     ii = unwrap(imag(a))
@@ -41,7 +40,7 @@ function Base.show(io::IO, a::Complex{Num})
         return print(io, arguments(rr)[1])
     end
 
-    show(io, real(a) + IM * imag(a))
+    show(io, real(a) + im * imag(a))
 end
 
 function (s::SymbolicUtils.Substituter)(x::Complex{Num})

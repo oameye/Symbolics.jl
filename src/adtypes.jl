@@ -1,3 +1,5 @@
+include("symbolic_number_diff.jl")
+
 """
     SymbolicsSparsityDetector <: ADTypes.AbstractSparsityDetector
 

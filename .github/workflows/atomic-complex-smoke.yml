@@ -1,0 +1,21 @@
+name: Atomic complex smoke
+on:
+  push:
+    branches:
+      - prototype/atomic-complex-scalar
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1.13'
+      - name: Remove legacy IM initialization hook for probe
+        run: sed -i '/SymbolicUtils.hashcons(IM, true)/d' src/Symbolics.jl
+      - name: Instantiate
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+      - name: Atomic scalar probe
+        run: julia --project=. test/atomic_complex_probe.jl
+      - name: Wrapper lattice probe
+        run: julia --project=. test/atomic_wrapper_lattice_probe.jl
