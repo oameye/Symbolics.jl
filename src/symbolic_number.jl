@@ -39,6 +39,14 @@ Base.imag(x::SymbolicNumber) = wrap(imag(unwrap(x)))
 Base.transpose(x::SymbolicNumber) = wrap(transpose(unwrap(x)))
 Base.adjoint(x::SymbolicNumber) = wrap(adjoint(unwrap(x)))
 
+# Unparameterized `Complex(re, im)` is ordinary scalar construction. When both components
+# are symbolic real scalars, keep the result as one symbolic scalar instead of eagerly
+# changing representation to `Complex{Num}`. Users that explicitly need the Cartesian
+# representation can still request `Complex{Num}(re, im)`.
+function Base.Complex(re::Num, img::Num)
+    return wrap(unwrap(re) + im * unwrap(img))
+end
+
 Base.iszero(x::SymbolicNumber) = SymbolicUtils._iszero(unwrap(x))
 Base.isone(x::SymbolicNumber) = SymbolicUtils._isone(unwrap(x))
 Base.zero(::SymbolicNumber) = SymbolicNumber(0)
