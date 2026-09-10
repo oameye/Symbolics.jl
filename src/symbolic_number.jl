@@ -41,14 +41,6 @@ Base.adjoint(x::SymbolicNumber) = wrap(adjoint(unwrap(x)))
 # `^(::Number, ::Integer)`. Keep integer powers on the symbolic algebra explicitly.
 Base.:^(x::SymbolicNumber, p::Integer) = wrap(unwrap(x)^p)
 
-# Prototype bridge only. Existing Num/Complex arithmetic frequently finishes by calling
-# `Complex(re::Num, im::Num)`. Redirect that path into one symbolic scalar so we can map
-# the representation dependencies before rewriting those legacy methods individually.
-# Explicit `Complex{Num}(re, im)` remains Cartesian.
-function Base.Complex(re::Num, img::Num)
-    return wrap(unwrap(re) + im * unwrap(img))
-end
-
 Base.iszero(x::SymbolicNumber) = SymbolicUtils._iszero(unwrap(x))
 Base.isone(x::SymbolicNumber) = SymbolicUtils._isone(unwrap(x))
 Base.zero(::SymbolicNumber) = SymbolicNumber(0)
