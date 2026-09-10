@@ -41,19 +41,21 @@ const SN = Symbolics.SymbolicNumber
     @testset "#327 #921 variable discovery" begin
         @variables t::Real x::Real u::Real v::Real z::Complex
         ex = x + t * Complex(u, v) + z
-        vars = Set(get_variables(ex))
+        vars = Set(Symbolics.get_variables(ex))
         for q in (x, t, u, v, z)
             @test any(vv -> isequal(vv, Symbolics.unwrap(q)), vars)
         end
         @test length(vars) == 5
-        @test Set(get_variables(exp(im * x))) == Set([Symbolics.unwrap(x)])
+        @test Set(Symbolics.get_variables(exp(im * x))) == Set([Symbolics.unwrap(x)])
     end
 
     @testset "#534 #905 #1109 #1813 substitution and domains" begin
         @variables z::Number f::Real
-        @test substitute(im * z, Dict(z => im); fold = Val(true)) == -1
+        sub1 = substitute(im * z, Dict(z => im); fold = Val(true))
+        @test Symbolics.value(sub1) == -1
         ex = 0.4 + 1.7im * z
-        @test substitute(ex, Dict(z => 0.2 + 1.0im); fold = Val(true)) ≈ -1.3 + 0.34im
+        sub2 = substitute(ex, Dict(z => 0.2 + 1.0im); fold = Val(true))
+        @test Symbolics.value(sub2) ≈ -1.3 + 0.34im
         transfer = z^2 + 2z + 1
         got = substitute(transfer, Dict(z => 2pi * f * im))
         @test got isa SN
