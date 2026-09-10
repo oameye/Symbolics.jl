@@ -45,7 +45,7 @@ using LinearAlgebra
         @test all(c -> c isa Symbolics.SymbolicNumber, C)
 
         f_oop, f_iip = Symbolics.build_function(C, z, x, y; expression = Val(false))
-        expected = [1 + 2im 2 + 4im; 2 + 3im 4 + 4im]
+        expected = [4 + 2im 6 + 4im; 2 + 3im 4 + 4im]
         @test f_oop(1 + 2im, 2.0, 1.0) == expected
         out = similar(expected)
         f_iip(out, 1 + 2im, 2.0, 1.0)
