@@ -76,6 +76,8 @@ jobs:
             Pkg.add(PackageSpec(url = "https://github.com/oameye/SymbolicUtils.jl", rev = ENV["SYMBOLICUTILS_REV"]))
             include(joinpath(repo, "test", "atomic_complex_patch_sqa.jl"))
             patch_sqa_for_atomic_symbolics!("/tmp/SecondQuantizedAlgebra.jl")
+            include(joinpath(repo, "test", "atomic_complex_patch_qc.jl"))
+            patch_qc_for_atomic_symbolics!("/tmp/QuantumCumulants.jl")
             Pkg.develop(path = "/tmp/SecondQuantizedAlgebra.jl")
             Pkg.develop(path = "/tmp/QuantumCumulants.jl")
             Pkg.add("ModelingToolkitBase")
