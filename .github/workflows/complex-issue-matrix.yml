@@ -13,8 +13,12 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1.13'
-      - name: Instantiate
-        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+      - name: Instantiate stacked complex implementation
+        run: >-
+          julia --project=. -e 'using Pkg;
+          Pkg.develop(PackageSpec(url="https://github.com/oameye/SymbolicUtils.jl",
+          rev="10ebd6183a7c98b707f1417ce026d39a41e074e9"));
+          Pkg.instantiate()'
       - name: Historical complex regressions
         run: julia --project=. test/complex_issue_regressions.jl
       - name: Extended complex regressions
