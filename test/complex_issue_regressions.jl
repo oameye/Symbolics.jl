@@ -28,8 +28,8 @@ raw(x) = Symbolics.unwrap(x)
     @testset "#327 #921 variable discovery" begin
         @variables t::Real x::Real u::Real v::Real z::Complex
         explicit = Complex(u, v)
-        vars_atomic = Set(get_variables(x + t * z + x))
-        vars_cart = Set(get_variables(x + t * explicit + x))
+        vars_atomic = Set(Symbolics.get_variables(x + t * z + x))
+        vars_cart = Set(Symbolics.get_variables(x + t * explicit + x))
         @test raw(t) in vars_atomic
         @test raw(x) in vars_atomic
         @test raw(z) in vars_atomic
@@ -91,10 +91,13 @@ raw(x) = Symbolics.unwrap(x)
         @test Symbolics.degree(im + z, z) == 1
     end
 
-    @testset "#777 rational construction" begin
+    @testset "#777 rational construction semantics" begin
         @variables x::Real
+        # `//` constructs exact rationals and is intentionally restricted to rational
+        # domains. A generic symbolic Real/complex expression must use algebraic division.
         for term in (im + x, 1 + im + x)
-            r = term // term
+            @test_throws MethodError term // term
+            r = term / term
             rf = build_function(r, x; expression = Val(false))
             @test rf(0.4) ≈ 1
         end
@@ -171,14 +174,19 @@ raw(x) = Symbolics.unwrap(x)
         @test length(v) == 4
     end
 
-    @testset "#1372 dot/simplify consistency" begin
+    @testset "#1372 dot follows Julia Hermitian semantics" begin
         @variables mass::Real qsqu::Real
         q2 = [0, 0, -(mass^2 + qsqu) / sqrt(qsqu) / 2,
               -im * (mass^2 + qsqu) / sqrt(qsqu) / 2]
         got = simplify(dot(q2, q2))
         direct = simplify(sum(q2[i] * q2[i] for i in eachindex(q2)))
-        f = build_function(got - direct, mass, qsqu; expression = Val(false))
-        @test f(1.4, 2.3) ≈ 0
+        gdot = build_function(got, mass, qsqu; expression = Val(false))
+        gdirect = build_function(direct, mass, qsqu; expression = Val(false))
+        m, q = 1.4, 2.3
+        qnum = [0, 0, -(m^2 + q) / sqrt(q) / 2, -im * (m^2 + q) / sqrt(q) / 2]
+        @test gdot(m, q) ≈ dot(qnum, qnum)
+        @test gdirect(m, q) ≈ sum(v * v for v in qnum)
+        @test !isapprox(gdot(m, q), gdirect(m, q))
     end
 
     @testset "#465 complex symbolic arrays scalarize" begin
@@ -219,9 +227,9 @@ raw(x) = Symbolics.unwrap(x)
         @variables z::Complex
         Dz = Differential(z)
         @test expand_derivatives(Dz(z)) == 1
-        # Non-holomorphic projections must not silently claim an ordinary complex derivative.
-        @test !isequal(expand_derivatives(Dz(conj(z))), 0)
-        @test !isequal(expand_derivatives(Dz(real(z))), 0)
-        @test !isequal(expand_derivatives(Dz(imag(z))), 0)
+        # Non-holomorphic projections remain unevaluated rather than silently claiming zero.
+        @test Symbolics.is_derivative(expand_derivatives(Dz(conj(z))))
+        @test Symbolics.is_derivative(expand_derivatives(Dz(real(z))))
+        @test Symbolics.is_derivative(expand_derivatives(Dz(imag(z))))
     end
 end
