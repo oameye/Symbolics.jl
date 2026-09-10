@@ -1,9 +1,23 @@
 include("symbolic_number.jl")
-include("atomic_complex_arithmetic_probe.jl")
 
 SymbolicUtils.promote_symtype(::typeof(imag), ::Type{Complex{T}}) where {T} = T
-Base.promote_rule(::Type{Complex{T}}, ::Type{S}) where {T<:Real, S<:Num} =  Complex{S} # 283
-Base.promote_rule(::Type{Complex{T}}, ::Type{Num}) where {T <: Real} = Complex{Num}
+Base.promote_rule(::Type{Complex{T}}, ::Type{Num}) where {T <: Real} = SymbolicNumber
+Base.promote_rule(::Type{Num}, ::Type{Complex{T}}) where {T <: Real} = SymbolicNumber
+
+# A numerical complex coefficient does not imply Cartesian symbolic storage. Build the
+# operation in BasicSymbolic and select Num/SymbolicNumber from its resulting symtype.
+for C in (Complex, Complex{Bool})
+    @eval begin
+        Base.:+(x::Num, z::$C) = wrap(unwrap(x) + z)
+        Base.:+(z::$C, x::Num) = wrap(z + unwrap(x))
+        Base.:-(x::Num, z::$C) = wrap(unwrap(x) - z)
+        Base.:-(z::$C, x::Num) = wrap(z - unwrap(x))
+        Base.:*(x::Num, z::$C) = wrap(unwrap(x) * z)
+        Base.:*(z::$C, x::Num) = wrap(z * unwrap(x))
+        Base.:/(x::Num, z::$C) = wrap(unwrap(x) / z)
+        Base.:/(z::$C, x::Num) = wrap(z / unwrap(x))
+    end
+end
 
 # `Complex{Num}` remains a supported explicit Cartesian representation, but it is no
 # longer selected by `wrap` for symbolic complex scalars. `SymbolicNumber <: Number`

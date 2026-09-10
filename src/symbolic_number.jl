@@ -54,6 +54,8 @@ Base.promote_rule(::Type{SymbolicNumber}, ::Type{T}) where {T <: Number} = Symbo
 # State the cross-wrapper edge explicitly so the promotion lattice is deterministic.
 Base.promote_rule(::Type{Num}, ::Type{SymbolicNumber}) = SymbolicNumber
 Base.promote_rule(::Type{SymbolicNumber}, ::Type{Num}) = SymbolicNumber
+Base.promote_rule(::Type{T}, ::Type{Num}) where {T <: Number} = SymbolicNumber
+Base.promote_rule(::Type{Num}, ::Type{T}) where {T <: Number} = SymbolicNumber
 Base.convert(::Type{SymbolicNumber}, x::Number) = SymbolicNumber(x)
 
 # Wrappers are representation boundaries, not distinct symbolic identities. Matching the
@@ -95,4 +97,11 @@ SymbolicIndexingInterface.getname(x::SymbolicNumber) = getname(unwrap(x))
 
 function (s::SymbolicUtils.Substituter)(x::SymbolicNumber)
     wrap(s(unwrap(x)))
+end
+
+
+function LinearAlgebra.lu(
+        x::Union{Adjoint{<:SymbolicNumber}, Transpose{<:SymbolicNumber}, Array{<:SymbolicNumber}};
+        check = true, kw...)
+    sym_lu(x; check = check)
 end
