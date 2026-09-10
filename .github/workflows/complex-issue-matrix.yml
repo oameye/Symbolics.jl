@@ -16,7 +16,7 @@ jobs:
       - name: Instantiate stacked complex implementation
         run: >-
           julia --project=. -e 'using Pkg;
-          Pkg.develop(PackageSpec(url="https://github.com/oameye/SymbolicUtils.jl",
+          Pkg.add(PackageSpec(url="https://github.com/oameye/SymbolicUtils.jl",
           rev="10ebd6183a7c98b707f1417ce026d39a41e074e9"));
           Pkg.instantiate()'
       - name: Historical complex regressions
