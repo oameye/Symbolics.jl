@@ -1,0 +1,23 @@
+name: Atomic symbolic numbers full suite
+on:
+  push:
+    branches:
+      - proposal/atomic-symbolic-numbers
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1.13'
+      - name: Pin complex-domain SymbolicUtils
+        run: >-
+          julia --project=. -e 'using Pkg;
+          Pkg.add(PackageSpec(url="https://github.com/oameye/SymbolicUtils.jl",
+          rev="126d7139def26e95bece91bb4a2b342767d76aab"));
+          Pkg.instantiate()'
+      - name: Full Symbolics test suite
+        run: julia --project=. -e 'using Pkg; Pkg.test()'
