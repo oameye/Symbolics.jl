@@ -17,3 +17,5 @@ jobs:
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
       - name: Atomic scalar probe
         run: julia --project=. test/atomic_complex_probe.jl
+      - name: Wrapper lattice probe
+        run: julia --project=. test/atomic_wrapper_lattice_probe.jl
