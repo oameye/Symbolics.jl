@@ -13,7 +13,7 @@ using SymbolicUtils
 
     zx = im * x
     @test zx isa Symbolics.SymbolicNumber
-    @test Symbolics.get_variables(zx) == [x]
+    @test Set(Symbolics.get_variables(zx)) == Set([Symbolics.unwrap(x)])
     @test !isdefined(Symbolics, :IM)
 
     @testset "complex projections and conjugation" begin
@@ -34,14 +34,27 @@ using SymbolicUtils
             @test !(y isa Complex{Num})
             @test SymbolicUtils.operation(Symbolics.unwrap(y)) === f
         end
+
         phase = exp(im * x)
         @test phase isa Symbolics.SymbolicNumber
         @test !(phase isa Complex{Num})
+        @test SymbolicUtils.operation(Symbolics.unwrap(phase)) === exp
+
+        # Regression shape for historical sqrt/log/exp Complex{Num} failures: the
+        # non-real argument remains one symbolic expression and never enters Base's
+        # numerical Complex algorithms during construction.
+        for f in (sqrt, log, exp)
+            y = f(-im + x)
+            @test y isa Symbolics.SymbolicNumber
+            @test !(y isa Complex{Num})
+            @test SymbolicUtils.operation(Symbolics.unwrap(y)) === f
+        end
     end
 
     @testset "substitution and code generation" begin
-        @test Symbolics.value(substitute(im * x, Dict(x => 2.0))) == 2.0im
-        @test Symbolics.value(substitute(z, Dict(z => 1.0 + 2.0im))) == 1.0 + 2.0im
+        @test Symbolics.value(substitute(im * x, Dict(x => 2.0); fold = Val(true))) == 2.0im
+        @test Symbolics.value(substitute(z, Dict(z => 1.0 + 2.0im); fold = Val(true))) == 1.0 + 2.0im
+        @test Symbolics.value(substitute(im * z, Dict(z => 1.0 + 2.0im); fold = Val(true))) == -2.0 + 1.0im
 
         f = Symbolics.build_function(im * x, x; expression = Val(false))
         @test f(2.0) == 2.0im
@@ -56,7 +69,12 @@ using SymbolicUtils
         dw = D(w)
         @test dw isa Symbolics.SymbolicNumber
         @test SymbolicUtils.symtype(Symbolics.unwrap(dw)) <: Number
-        @test D(conj(w)) == conj(D(w))
+
+        # This is the mathematically valid conjugation rule when the independent
+        # variable is real. Complex-independent-variable calculus is tested separately.
+        lhs = expand_derivatives(D(conj(w)))
+        rhs = conj(expand_derivatives(D(w)))
+        @test isequal(lhs, rhs)
     end
 
     @testset "promotion and small arrays" begin
@@ -68,8 +86,31 @@ using SymbolicUtils
 
         A = [z1 z2; conj(z1) z1 + z2]
         @test eltype(A) <: Number
-        h = Symbolics.build_function(A, z1, z2; expression = Val(false))
+        h, h! = Symbolics.build_function(A, z1, z2; expression = Val(false))
         out = h(1.0 + 2.0im, 3.0 - 1.0im)
         @test out == [1.0 + 2.0im 3.0 - 1.0im; 1.0 - 2.0im 4.0 + 1.0im]
+
+        dest = similar(out)
+        h!(dest, 1.0 + 2.0im, 3.0 - 1.0im)
+        @test dest == out
+    end
+
+    @testset "historical representation regressions" begin
+        # Heterogeneous numeric symbolic domains must have a common atomic wrapper rather
+        # than forcing every element through Complex{Num} conversion.
+        @variables t0::Real generic::Number cplx::Complex q(t0)::Real
+        v = [t0, generic, cplx, q]
+        @test eltype(v) == Symbolics.SymbolicNumber
+        @test length(v) == 4
+
+        # Imaginary constants must remain literal coefficients in equations rather than
+        # disappearing because a complex expression was stored in a Real wrapper.
+        eq = x + 3 + im ~ 0
+        @test eq.lhs isa Symbolics.SymbolicNumber
+        @test Symbolics.value(imag(eq.lhs)) == 1
+
+        rational_complex = 1 / (1 - z^10)
+        @test rational_complex isa Symbolics.SymbolicNumber
+        @test !(rational_complex isa Complex{Num})
     end
 end
