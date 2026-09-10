@@ -1,5 +1,3 @@
-export SymbolicNumber
-
 # Atomic wrapper for symbolic scalar expressions whose symbolic type is numeric but not
 # necessarily real. Unlike `Complex{Num}`, this wrapper does not decompose an expression
 # into real and imaginary components. The wrapped `BasicSymbolic` remains one expression
@@ -24,12 +22,13 @@ SU.infer_vartype(::Type{SymbolicNumber}) = VartypeT
 SymbolicUtils.symtype(x::SymbolicNumber) = symtype(unwrap(x))
 
 # Route symbolic arithmetic through the raw BasicSymbolic algebra and only choose the
-# wrapper after `promote_symtype` has determined the mathematical result domain.
+# wrapper after `promote_symtype` has determined the mathematical result domain. `//` is
+# deliberately excluded: it constructs an exact Rational and is not generic division.
 SymbolicUtils.@number_methods(
     SymbolicNumber,
     wrap(f(unwrap(a))),
     wrap(f(unwrap(a), unwrap(b))),
-    [conj, real, imag, transpose],
+    [conj, real, imag, transpose, //],
 )
 
 Base.conj(x::SymbolicNumber) = wrap(conj(unwrap(x)))
@@ -41,6 +40,15 @@ Base.adjoint(x::SymbolicNumber) = wrap(adjoint(unwrap(x)))
 # integer/rational power methods. Keep those powers on the symbolic algebra explicitly.
 Base.:^(x::SymbolicNumber, p::Integer) = wrap(unwrap(x)^p)
 Base.:^(x::SymbolicNumber, p::Rational) = wrap(unwrap(x)^p)
+# Base has a dedicated `ℯ ^ ::Number` method which intersects the generic symbolic
+# exponent methods emitted above. Preserve the canonical exponential representation.
+Base.:^(::Irrational{:ℯ}, x::SymbolicNumber) = wrap(exp(unwrap(x)))
+
+# `polygamma(::Integer, ::Number)` in SpecialFunctions intersects the generic symbolic
+# binary-function methods. This exact intersection keeps integer orders on the symbolic
+# expression path without broadening the dispatch surface.
+SpecialFunctions.polygamma(m::Integer, x::SymbolicNumber) =
+    wrap(SpecialFunctions.polygamma(m, unwrap(x)))
 
 # Base implements `cis(::Real)` through `sincos` followed by explicit `Complex`
 # construction. That is appropriate for numerical values but would reintroduce Cartesian
@@ -55,14 +63,18 @@ Base.zero(::Type{SymbolicNumber}) = SymbolicNumber(0)
 Base.one(::SymbolicNumber) = SymbolicNumber(1)
 Base.one(::Type{SymbolicNumber}) = SymbolicNumber(1)
 
+# `SymbolicNumber` is the wide numeric wrapper. Ordinary real values mixed with `Num`
+# continue to promote to `Num` via `num.jl`; only the explicit Num/complex edge in
+# `complex.jl` widens a real symbolic value to `SymbolicNumber`.
+Base.promote_rule(::Type{SymbolicNumber}, ::Type{SymbolicNumber}) = SymbolicNumber
 Base.promote_rule(::Type{T}, ::Type{SymbolicNumber}) where {T <: Number} = SymbolicNumber
 Base.promote_rule(::Type{SymbolicNumber}, ::Type{T}) where {T <: Number} = SymbolicNumber
-# `Num` also has a broad `promote_rule(::Type{T}, ::Type{Num}) where T <: Number`.
-# State the cross-wrapper edge explicitly so the promotion lattice is deterministic.
+# Exact intersections with Base promotion rules keep Aqua ambiguity-free.
+Base.promote_rule(::Type{Bool}, ::Type{SymbolicNumber}) = SymbolicNumber
+Base.promote_rule(::Type{T}, ::Type{SymbolicNumber}) where {T <: AbstractIrrational} =
+    SymbolicNumber
 Base.promote_rule(::Type{Num}, ::Type{SymbolicNumber}) = SymbolicNumber
 Base.promote_rule(::Type{SymbolicNumber}, ::Type{Num}) = SymbolicNumber
-Base.promote_rule(::Type{T}, ::Type{Num}) where {T <: Number} = SymbolicNumber
-Base.promote_rule(::Type{Num}, ::Type{T}) where {T <: Number} = SymbolicNumber
 Base.convert(::Type{SymbolicNumber}, x::Number) = SymbolicNumber(x)
 
 # Wrappers are representation boundaries, not distinct symbolic identities. Matching the
