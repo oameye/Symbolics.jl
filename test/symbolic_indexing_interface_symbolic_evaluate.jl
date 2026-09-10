@@ -35,3 +35,11 @@ expr4 = D(x) ~ 3x + y
 @test isequal(symbolic_evaluate(expr4, Dict(x => 3); operator = Operator), D(x) ~ y + 9)
 @test isequal(symbolic_evaluate(expr4, Dict(x => 1, D(x) => 2)), 2 ~ 3 + y)
 @test isequal(symbolic_evaluate(expr4, Dict(x => 1, D(x) => 2, y => 3)), 2 ~ 6)
+
+# General numeric symbolic scalars participate in the same indexing interface as Num.
+@variables z::Number
+expr5 = 1 + im * z
+@test symbolic_type(typeof(z)) == ScalarSymbolic()
+@test symbolic_type(typeof(expr5)) == ScalarSymbolic()
+@test isequal(symbolic_evaluate(z, Dict(z => im)), im)
+@test isequal(symbolic_evaluate(expr5, Dict(z => 2)), 1 + 2im)
