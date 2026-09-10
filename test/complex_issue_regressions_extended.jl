@@ -45,10 +45,19 @@ const SN = Symbolics.SymbolicNumber
         @test w isa Complex{Num}
         for exponent in (1 / 3, 1 // 3)
             wp = w^exponent
+            @test wp isa Complex{Num}
             wf = build_function(wp, x, y; expression = Val(false))
             value = 0.7 + 1.3im
             @test wf(real(value), imag(value)) ≈ value^exponent
         end
+
+        # A symbolic real exponent preserves the explicit Cartesian representation and
+        # uses the same principal polar branch.
+        wsp = w^p
+        @test wsp isa Complex{Num}
+        wspf = build_function(wsp, x, y, p; expression = Val(false))
+        value = 0.7 + 1.3im
+        @test wspf(real(value), imag(value), 0.37) ≈ value^0.37
     end
 
     @testset "#1917 cubic/quartic solvers with non-rational coefficients" begin
