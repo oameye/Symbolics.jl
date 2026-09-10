@@ -58,6 +58,25 @@ Base.promote_rule(::Type{T}, ::Type{Num}) where {T <: Number} = SymbolicNumber
 Base.promote_rule(::Type{Num}, ::Type{T}) where {T <: Number} = SymbolicNumber
 Base.convert(::Type{SymbolicNumber}, x::Number) = SymbolicNumber(x)
 
+# Match the ordinary `Num` comparison contract: concrete comparisons evaluate to Bool,
+# while genuinely symbolic comparisons remain symbolic Boolean expressions.
+for f in (:(==), :(!=))
+    @eval begin
+        function Base.$f(a::SymbolicNumber, b::SymbolicNumber)
+            val = $f(unwrap(a), unwrap(b))
+            return val isa Bool ? val : wrap(val)
+        end
+        function Base.$f(a::SymbolicNumber, b::Number)
+            val = $f(unwrap(a), unwrap(b))
+            return val isa Bool ? val : wrap(val)
+        end
+        function Base.$f(a::Number, b::SymbolicNumber)
+            val = $f(unwrap(a), unwrap(b))
+            return val isa Bool ? val : wrap(val)
+        end
+    end
+end
+
 # Wrappers are representation boundaries, not distinct symbolic identities. Matching the
 # wrapped expression's hash and `isequal` semantics is required by generic substitution,
 # which recursively visits raw `BasicSymbolic` nodes while users naturally provide wrapped
@@ -98,5 +117,3 @@ SymbolicIndexingInterface.getname(x::SymbolicNumber) = getname(unwrap(x))
 function (s::SymbolicUtils.Substituter)(x::SymbolicNumber)
     wrap(s(unwrap(x)))
 end
-
-
