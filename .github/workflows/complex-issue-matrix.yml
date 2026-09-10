@@ -11,18 +11,6 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1.13'
-      - name: Apply proven source topology for issue audit
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('src/num.jl')
-          s = p.read_text()
-          start = s.index('for C in [Complex, Complex{Bool}]')
-          stop = s.index('function Base.inv(z::Complex{Num})', start)
-          p.write_text(s[:start] + s[stop:])
-          p = Path('src/Symbolics.jl')
-          p.write_text(p.read_text().replace('    SymbolicUtils.hashcons(IM, true)\n', ''))
-          PY
       - name: Instantiate
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
       - name: Historical complex regressions
