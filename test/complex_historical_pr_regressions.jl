@@ -60,10 +60,16 @@ using Symbolics
         @test !islinear
     end
 
-    @testset "#160 tuple-argument build_function" begin
+    @testset "#160 #919 #1326 complex build_function" begin
         @variables a::Real b::Real
         out = a + im * b
         f = build_function(out, (a, b); expression = Val(false))
         @test f((1.0, 2.0)) == 1.0 + 2.0im
+
+        fruntime = build_function(1.0 + im * a, a; expression = Val(false))
+        @test fruntime(1.0) == 1.0 + 1.0im
+
+        fexpr = build_function(1 + im * a, a)
+        @test eval(fexpr)(1) == 1 + im
     end
 end
