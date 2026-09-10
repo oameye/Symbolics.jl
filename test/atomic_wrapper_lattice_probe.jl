@@ -3,9 +3,9 @@ using Symbolics
 using SymbolicUtils
 
 @testset "numeric wrapper lattice" begin
-    r = Sym{Symbolics.VartypeT}(:wrapper_real; type = Real)
-    n = Sym{Symbolics.VartypeT}(:wrapper_number; type = Number)
-    c = Sym{Symbolics.VartypeT}(:wrapper_complex; type = Complex{Real})
+    r = SymbolicUtils.Sym{Symbolics.VartypeT}(:wrapper_real; type = Real)
+    n = SymbolicUtils.Sym{Symbolics.VartypeT}(:wrapper_number; type = Number)
+    c = SymbolicUtils.Sym{Symbolics.VartypeT}(:wrapper_complex; type = Complex{Real})
 
     @test Symbolics.wrapper_type(Real) === Num
     @test Symbolics.wrapper_type(Number) === Symbolics.SymbolicNumber
@@ -33,12 +33,12 @@ end
 # wrapper. The built-in Number fallback must not steal it.
 abstract type ProbeNumericDomain <: Number end
 @symbolic_wrap struct ProbeNumericWrapper <: ProbeNumericDomain
-    val::BasicSymbolic{Symbolics.VartypeT}
+    val::SymbolicUtils.BasicSymbolic{Symbolics.VartypeT}
 end
 SymbolicUtils.unwrap(x::ProbeNumericWrapper) = x.val
 
 @testset "custom numeric wrapper specificity" begin
-    p = Sym{Symbolics.VartypeT}(:probe_numeric; type = ProbeNumericDomain)
+    p = SymbolicUtils.Sym{Symbolics.VartypeT}(:probe_numeric; type = ProbeNumericDomain)
     @test Symbolics.wrapper_type(ProbeNumericDomain) === ProbeNumericWrapper
     @test Symbolics.wrap(p) isa ProbeNumericWrapper
     @test Symbolics.unwrap(Symbolics.wrap(p)) === p
