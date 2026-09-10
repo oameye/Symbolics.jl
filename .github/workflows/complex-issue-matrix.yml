@@ -17,3 +17,5 @@ jobs:
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
       - name: Historical complex regressions
         run: julia --project=. test/complex_issue_regressions.jl
+      - name: Extended complex regressions
+        run: julia --project=. test/complex_issue_regressions_extended.jl
