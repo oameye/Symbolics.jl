@@ -189,3 +189,32 @@ end
 function LinearAlgebra.lu(A::AbstractMatrix{<:SymbolicNumber}; check::Bool = true)
     sym_lu(A; check)
 end
+
+# Julia's numerical matrix exponential does not know about the atomic wrapper. Build the
+# same symbolic matrix operation as the existing `Num`/`Complex{Num}` bridges and let
+# `wrap` select the array wrapper from the resulting symbolic type at call time.
+Base.exp(A::Matrix{SymbolicNumber}) = wrap(exp(SConst(A)))
+
+# Linear expansion is wrapper-neutral internally; only the public scalar boundary needs to
+# unwrap the variable and re-wrap the coefficient/remainder according to their symtypes.
+function linear_expansion(t, x::SymbolicNumber)
+    a, b, islinear = linear_expansion(t, unwrap(x))
+    return wrap(a), wrap(b), islinear
+end
+
+# A system whose unknowns are general numeric scalars may contain genuinely complex
+# coefficients. Use the existing symbolic LU algorithm with a homogeneous wide-wrapper
+# workspace instead of forcing the raw coefficient matrix through `Num`.
+function symbolic_linear_solve(
+        eqs::AbstractArray, vars::AbstractArray{<:SymbolicNumber};
+        simplify = false, check = true
+    )
+    A, b, islinear = linear_expansion(eqs, unwrap.(vars))
+    check && @assert islinear
+    islinear || return nothing
+
+    Aw = SymbolicNumber.(A)
+    rhs = SymbolicNumber.(-b)
+    sol = sym_lu(Aw) \ rhs
+    return simplify ? SymbolicUtils.simplify_fractions.(sol) : sol
+end
