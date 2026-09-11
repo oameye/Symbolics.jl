@@ -496,7 +496,6 @@ let
 
     mylogaddexp(x, y) = log(exp(x) + exp(y))
     @register_symbolic mylogaddexp(x, y)
-    Symbolics.linearity_1(::typeof(mylogaddexp)) = true
     expr = 3x₁^2 + 4x₁ * x₂ + mylogaddexp(p, 2)
     @test Matrix(Symbolics.hessian_sparsity(expr, [x₁, x₂])) == [true true; true false]
     expr = 3x₁^2 + 4x₁ * x₂ + mylogaddexp(3, p)
