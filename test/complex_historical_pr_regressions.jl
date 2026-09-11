@@ -22,8 +22,8 @@ using Symbolics
     @testset "#908 #911 complex differentiation" begin
         @variables t::Real
         D = Differential(t)
-        @test isequal(expand_derivatives(D(im * t)), im)
-        @test isequal(expand_derivatives(D(exp(im * t))), im * exp(im * t))
+        @test iszero(simplify(expand_derivatives(D(im * t)) - im))
+        @test iszero(simplify(expand_derivatives(D(exp(im * t))) - im * exp(im * t)))
     end
 
     @testset "#1763 sinpi/cospi/sincospi" begin
@@ -48,13 +48,13 @@ using Symbolics
 
         a, b, islinear = Symbolics.linear_expansion(2im * x + im, x)
         @test islinear
-        @test isequal(a, 2im)
-        @test isequal(b, im)
+        @test iszero(simplify(a - 2im))
+        @test iszero(simplify(b - im))
 
         a, b, islinear = Symbolics.linear_expansion(im * x + im * y, x)
         @test islinear
-        @test isequal(a, im)
-        @test isequal(b, im * y)
+        @test iszero(simplify(a - im))
+        @test iszero(simplify(b - im * y))
 
         _, _, islinear = Symbolics.linear_expansion(im * x^2 + im * x, x)
         @test !islinear
