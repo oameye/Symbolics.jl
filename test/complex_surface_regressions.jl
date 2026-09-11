@@ -133,7 +133,9 @@ const SN = Symbolics.SymbolicNumber
         M = [z 1; 1 w]
 
         @test lu(M; check = false) isa LinearAlgebra.LU
-        @test iszero(simplify(det(M; laplace = false) - det(M; laplace = true)))
+        @test iszero(simplify_fractions(expand(
+            det(M; laplace = false) - det(M; laplace = true)
+        )))
 
         Minv = inv(M; laplace = false)
         ident = simplify.(M * Minv)
