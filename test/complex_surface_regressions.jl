@@ -2,6 +2,7 @@ using Test
 using Symbolics
 using SymbolicUtils
 using Latexify
+using LinearAlgebra
 
 const SN = Symbolics.SymbolicNumber
 
@@ -55,5 +56,50 @@ const SN = Symbolics.SymbolicNumber
         phasetex = sprint(show, MIME"text/latex"(), exp(im * x))
         @test !isempty(phasetex)
         @test occursin("exp", phasetex) || occursin("e", lowercase(phasetex))
+    end
+
+    @testset "general numeric wrapper reaches high-level differentiation" begin
+        @variables z::Complex w::Complex
+        J = Symbolics.jacobian([z^2 + w], [z, w])
+        @test size(J) == (1, 2)
+        @test iszero(simplify(J[1, 1] - 2z))
+        @test isone(simplify(J[1, 2]))
+    end
+
+    @testset "general numeric wrapper reaches symbolic linear algebra" begin
+        @variables z::Complex w::Complex
+        M = [z 1; 1 w]
+
+        @test lu(M; check = false) isa LinearAlgebra.LU
+        @test iszero(simplify(det(M; laplace = false) - det(M; laplace = true)))
+
+        Minv = inv(M; laplace = false)
+        ident = simplify.(M * Minv)
+        @test isone(ident[1, 1])
+        @test iszero(ident[1, 2])
+        @test iszero(ident[2, 1])
+        @test isone(ident[2, 2])
+
+        Mex = exp([z zero(z); zero(w) w])
+        @test Mex isa Symbolics.Arr{SN, 2}
+    end
+
+    @testset "complex symbolic arrays preserve result domains" begin
+        @variables (v::Complex)[1:2]
+        nv = norm(v)
+        @test nv isa Num
+        @test SymbolicUtils.symtype(Symbolics.unwrap(nv)) <: Real
+    end
+
+    @testset "complex symbolic linear systems" begin
+        @variables z::Complex w::Complex
+
+        scalar_sol = symbolic_linear_solve(z + im ~ 0, z)
+        @test iszero(simplify(scalar_sol + im))
+
+        sols = symbolic_linear_solve([z + w ~ 1, z - w ~ im], [z, w])
+        @test length(sols) == 2
+        @test iszero(simplify(sols[1] - (1 + im) / 2))
+        @test iszero(simplify(sols[2] - (1 - im) / 2))
     end
 end
