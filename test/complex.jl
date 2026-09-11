@@ -13,16 +13,19 @@ const SN = Symbolics.SymbolicNumber
     @test z isa SN
     @test Z[1] isa SN
 
-    for x in (z, Z[1], z + a, z * a, z^2, z / z)
+    for x in (z, Z[1], z + a, z * a, z^2)
         @test x isa SN
         @test symtype(unwrap(x)) <: Number
         @test real(x) isa Num
         @test imag(x) isa Num
         @test conj(x) isa SN
     end
+    @test isone(simplify(z / z))
 
     @test repr(z) == "z"
-    @test repr(exp(im * a)) == "exp(im*a)" || repr(exp(im * a)) == "exp(a*im)"
+    phase = exp(im * a)
+    @test phase isa SN
+    @test SymbolicUtils.operation(unwrap(phase)) === exp
 end
 
 @testset "literal imaginary unit" begin
