@@ -8,6 +8,20 @@ SymbolicUtils.promote_symtype(::typeof(imag), ::Type{Complex{T}}) where {T} = T
 Base.promote_rule(::Type{Complex{T}}, ::Type{Num}) where {T <: Real} = SymbolicNumber
 Base.promote_rule(::Type{Num}, ::Type{Complex{T}}) where {T <: Real} = SymbolicNumber
 
+# Generic linear algebra determines output storage with `promote_op(matprod, ...)`. Scalar
+# wrapper arithmetic may narrow dynamically, so inference alone cannot choose a concrete
+# container type. `SymbolicNumber` is the safe closed container whenever either factor is
+# a potentially complex symbolic scalar.
+Base.promote_op(
+    ::typeof(LinearAlgebra.matprod), ::Type{SymbolicNumber}, ::Type{SymbolicNumber}
+) = SymbolicNumber
+Base.promote_op(
+    ::typeof(LinearAlgebra.matprod), ::Type{SymbolicNumber}, ::Type{T}
+) where {T <: Number} = SymbolicNumber
+Base.promote_op(
+    ::typeof(LinearAlgebra.matprod), ::Type{T}, ::Type{SymbolicNumber}
+) where {T <: Number} = SymbolicNumber
+
 # A numerical complex coefficient does not imply Cartesian symbolic storage. Build the
 # operation in BasicSymbolic and select Num/SymbolicNumber from its resulting symtype.
 for C in (Complex, Complex{Bool})
