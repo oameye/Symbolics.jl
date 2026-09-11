@@ -87,9 +87,18 @@ jobs:
           version: ${{ matrix.julia-version }}
           arch: x64
       - name: Pin minimal SymbolicUtils prerequisite and run Core
-        shell: julia --color=yes --project=. {0}
+        shell: bash
         run: |
-          using Pkg
-          Pkg.add(PackageSpec(url = "https://github.com/oameye/SymbolicUtils.jl", rev = "c657c2ffd1219908ecc13ca81cb3b6be620636f2"))
-          Pkg.instantiate()
-          Pkg.test()
+          set -o pipefail
+          julia --color=yes --project=. -e '
+            using Pkg
+            Pkg.add(PackageSpec(url = "https://github.com/oameye/SymbolicUtils.jl", rev = "c657c2ffd1219908ecc13ca81cb3b6be620636f2"))
+            Pkg.instantiate()
+            Pkg.test()
+          ' 2>&1 | tee complex-domain-cert.log
+      - name: Upload complex certification log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: complex-domain-cert-${{ matrix.julia-version }}
+          path: complex-domain-cert.log
