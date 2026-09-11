@@ -121,3 +121,71 @@ end
 function (s::SymbolicUtils.Substituter)(x::SymbolicNumber)
     wrap(s(unwrap(x)))
 end
+
+# High-level APIs historically reconstructed all symbolic derivatives as `Num`. Keep the
+# existing real-valued paths unchanged and bridge only the wider scalar wrapper through the
+# raw symbolic algorithms; `wrap` then recovers the mathematical result domain.
+function derivative(O::SymbolicNumber, var; simplify = false, kwargs...)
+    wrap(expand_derivatives(Differential(var)(unwrap(O)), simplify; kwargs...))
+end
+function derivative(O::AbstractArray{<:SymbolicNumber}, var; simplify = false, kwargs...)
+    map(O) do o
+        wrap(expand_derivatives(Differential(var)(unwrap(o)), simplify; kwargs...))
+    end
+end
+derivative(f::Function, var::SymbolicNumber) = derivative(f(var), var)
+
+function gradient(O::SymbolicNumber, vars::AbstractVector; simplify = false, kwargs...)
+    map(vars) do var
+        wrap(expand_derivatives(Differential(var)(unwrap(O)), simplify; kwargs...))
+    end
+end
+
+function jacobian(
+        ops::AbstractVector{<:SymbolicNumber}, vars::AbstractVector{<:SymbolicNumber};
+        simplify = false, scalarize::Union{Val{true}, Val{false}} = Val(true), kwargs...
+    )
+    if scalarize isa Val{true}
+        ops = Symbolics.scalarize(ops)
+        vars = Symbolics.scalarize(vars)
+    end
+    raw_ops = unwrap.(ops)::Vector{SymbolicT}
+    raw_vars = unwrap.(vars)::Vector{SymbolicT}
+    return wrap.(jacobian(raw_ops, raw_vars; simplify, scalarize = Val(false), kwargs...))
+end
+
+function sparsejacobian_vals(
+        ops::AbstractVector{<:SymbolicNumber}, vars::AbstractVector{<:SymbolicNumber},
+        I::AbstractVector, J::AbstractVector; simplify::Bool = false, kwargs...
+    )
+    raw_ops = unwrap.(ops)::Vector{SymbolicT}
+    raw_vars = unwrap.(vars)::Vector{SymbolicT}
+    return [
+        wrap(expand_derivatives(
+            Differential(raw_vars[j])(raw_ops[i]), simplify; kwargs...
+        )) for (i, j) in zip(I, J)
+    ]
+end
+
+function hessian(
+        O::SymbolicNumber, vars::AbstractVector{<:SymbolicNumber};
+        simplify = false, kwargs...
+    )
+    return jacobian(
+        gradient(O, vars; simplify, kwargs...), vars; simplify, kwargs...
+    )
+end
+
+function sparsehessian(
+        O::SymbolicNumber, vars::AbstractVector{<:SymbolicNumber};
+        simplify::Bool = false, full::Bool = true, kwargs...
+    )
+    H = SparseArrays.sparse(hessian(O, vars; simplify, kwargs...))
+    return full ? H : SparseArrays.tril(H)
+end
+
+# Public `lu` should select the existing symbolic factorization for the new atomic wrapper
+# just as it already does for the historical real/Cartesian symbolic representations.
+function LinearAlgebra.lu(A::AbstractMatrix{<:SymbolicNumber}; check::Bool = true)
+    sym_lu(A; check)
+end
