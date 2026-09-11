@@ -416,11 +416,11 @@ let
     @test Symbolics.is_derivative(D(Z))
     @test !Symbolics.is_derivative(Z)
 
-    # `Differential` distributes over the parts of a `Complex{Num}`, so the result is a
-    # `complex` term rather than a single derivative term.
+    # A complex-capable symbolic function remains atomic, so applying `Differential`
+    # produces one derivative term just like any other scalar symbolic function.
     @variables W(t)::Complex
-    @test !Symbolics.is_derivative(D(W))
-    @test !Symbolics.is_derivative(Symbolics.unwrap(D(W)))
+    @test Symbolics.is_derivative(D(W))
+    @test Symbolics.is_derivative(Symbolics.unwrap(D(W)))
 end
 
 # Zeroth derivative (#1163)
@@ -496,6 +496,7 @@ let
 
     mylogaddexp(x, y) = log(exp(x) + exp(y))
     @register_symbolic mylogaddexp(x, y)
+    Symbolics.linearity_1(::typeof(mylogaddexp)) = true
     expr = 3x₁^2 + 4x₁ * x₂ + mylogaddexp(p, 2)
     @test Matrix(Symbolics.hessian_sparsity(expr, [x₁, x₂])) == [true true; true false]
     expr = 3x₁^2 + 4x₁ * x₂ + mylogaddexp(3, p)
