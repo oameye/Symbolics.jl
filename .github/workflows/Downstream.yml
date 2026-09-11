@@ -69,3 +69,26 @@ jobs:
             @info "Not compatible with this release. No problem." exception=err
             exit(0)  # Exit immediately, as a success
           end
+
+  complex-domain-cert:
+    name: Complex domain stress / Julia ${{ matrix.julia-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version: ['1', '1.10']
+    env:
+      GROUP: Core
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.julia-version }}
+          arch: x64
+      - name: Pin SymbolicUtils prerequisite and run Core
+        shell: julia --color=yes --project=. {0}
+        run: |
+          using Pkg
+          Pkg.develop(PackageSpec(url = "https://github.com/oameye/SymbolicUtils.jl", rev = "cc57eb663347b4ce77c5db3c4041131b5c42f920"))
+          Pkg.instantiate()
+          Pkg.test()
