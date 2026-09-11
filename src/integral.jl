@@ -52,7 +52,10 @@ function (I::Integral)(x::Union{Rational, AbstractIrrational, AbstractFloat, Int
         return Num(SConst(b - a) * x)
     end
 end
-(I::Integral)(x::Complex) = Complex{Num}(Num(I(unwrap(real(x)))), Num(I(unwrap(imag(x)))))
+# Explicit Cartesian symbolic values remain Cartesian; ordinary numerical complex
+# constants are integrated atomically and wrapped from the resulting symbolic domain.
+(I::Integral)(x::Complex{Num}) = Complex{Num}(I(real(x)), I(imag(x)))
+(I::Integral)(x::Complex) = wrap(I(real(x)) + im * I(imag(x)))
 function (I::Integral)(x)
     return Term{VartypeT}(
         I, SArgsT((x,));
@@ -60,6 +63,7 @@ function (I::Integral)(x)
     )
 end
 (I::Integral)(x::Num) = Num(I(unwrap(x)))
+(I::Integral)(x::SymbolicNumber) = wrap(I(unwrap(x)))
 SymbolicUtils.promote_symtype(::Integral, T::SymbolicUtils.TypeT) = T
 SymbolicUtils.promote_shape(::Integral, @nospecialize(sh::SymbolicUtils.ShapeT)) = sh
 
