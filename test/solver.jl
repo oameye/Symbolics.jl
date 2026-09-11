@@ -96,8 +96,7 @@ end
 @testset "Nice univar cases" begin
     found_roots = symbolic_solve(1/x^2 ~ 1/y^2 - 2/x^3 * (x-y), x)
     known_roots = Symbolics.unwrap.([y, -2y])
-    @test length(found_roots) == length(known_roots)
-    @test all(root -> any(isequal(root, known) for known in known_roots), found_roots)
+    @test isequal(found_roots, known_roots)
 end
 
 @testset "Deg 1 univar" begin
@@ -304,6 +303,19 @@ end
     # eqs = [-288421779135875//1125899906842624*H1^2 + 1963378034549373//562949953421312*H1 - 4, -288421779135875//844424930131968*H1*H2 + 1963378034549373//562949953421312*H2 - 4]
     # symbolic_solve(eqs, [H1, H2])
 
+    @test isnothing(symbolic_solve([x*y - 1, sin(x)], [x, y]))
+
+    @variables x y z
+    boot = 10
+    for i in 1:boot
+        # at most 4 roots by Bézout's theorem
+        rand_eq(xs, d) = rand(-10:10) + rand(-10:10)*x + rand(-10:10)*y + rand(-10:10)*x*y + rand(-10:10)*x^2 + rand(-10:10)*y^2
+        eqs = [rand_eq([x,y],2), rand_eq([x,y],2)]
+        sol = symbolic_solve(eqs, [x,y])
+        backward = [Symbolics.substitute(eqs, s) for s in sol]
+        @test all(x -> all(isapprox.(eval(Symbolics.toexpr(x)), 0; atol=1e-6)), backward)
+    end
+
     @test isnothing(symbolic_solve([x^2, x*y, y^2], [x,y], warns=false))
 end
 
@@ -415,10 +427,10 @@ end
     @test Symbolics.n_func_occ(x^2 + x + x^3, x) == 1
     @test Symbolics.n_func_occ(log(x)^2 - 17, x) == 1
     @test Symbolics.n_func_occ(2^(x^2 + x) + 5^(x+3), x) == 2
-    
+
     expr = log( log(x) + log(x) ) + log( log(x) + log(x) ) - 11
     @test Symbolics.n_func_occ(expr, x) == 1
-    
+
     # log(2) - 3log(5) + x*log(2) - x*log(5)
     expr = expand((1 + x)*Symbolics.term(log, 2) - (3 + x)*Symbolics.term(log, 5))
     @test Symbolics.n_func_occ(expr, x) == 1
