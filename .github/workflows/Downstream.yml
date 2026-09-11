@@ -90,6 +90,6 @@ jobs:
         shell: julia --color=yes --project=. {0}
         run: |
           using Pkg
-          Pkg.add(PackageSpec(url = "https://github.com/oameye/SymbolicUtils.jl", rev = "3f4c2c80d3829bd2c083a6e9565fb07b3d2e97ea"))
+          Pkg.add(PackageSpec(url = "https://github.com/oameye/SymbolicUtils.jl", rev = "c657c2ffd1219908ecc13ca81cb3b6be620636f2"))
           Pkg.instantiate()
           Pkg.test()
