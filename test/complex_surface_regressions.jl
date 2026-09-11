@@ -3,6 +3,7 @@ using Symbolics
 using SymbolicUtils
 using Latexify
 using LinearAlgebra
+using SparseArrays
 
 const SN = Symbolics.SymbolicNumber
 
@@ -60,10 +61,34 @@ const SN = Symbolics.SymbolicNumber
 
     @testset "general numeric wrapper reaches high-level differentiation" begin
         @variables z::Complex w::Complex
-        J = Symbolics.jacobian([z^2 + w], [z, w])
-        @test size(J) == (1, 2)
+
+        dz = Symbolics.derivative(z^2 + im * z, z)
+        @test dz isa SN
+        @test iszero(simplify(dz - (2z + im)))
+
+        g = Symbolics.gradient(z * w + im * z, [z, w])
+        @test length(g) == 2
+        @test iszero(simplify(g[1] - (w + im)))
+        @test iszero(simplify(g[2] - z))
+
+        J = Symbolics.jacobian([z^2 + w, im * z + w^2], [z, w])
+        @test size(J) == (2, 2)
         @test iszero(simplify(J[1, 1] - 2z))
         @test isone(simplify(J[1, 2]))
+        @test iszero(simplify(J[2, 1] - im))
+        @test iszero(simplify(J[2, 2] - 2w))
+
+        Js = Symbolics.sparsejacobian([z^2 + w, im * z + w^2], [z, w])
+        @test Js isa SparseMatrixCSC
+        @test iszero(simplify(Js[1, 1] - 2z))
+        @test iszero(simplify(Js[2, 1] - im))
+
+        H = Symbolics.hessian(im * z^2 + z * w, [z, w])
+        @test size(H) == (2, 2)
+        @test iszero(simplify(H[1, 1] - 2im))
+        @test isone(simplify(H[1, 2]))
+        @test isone(simplify(H[2, 1]))
+        @test iszero(simplify(H[2, 2]))
     end
 
     @testset "general numeric wrapper reaches symbolic linear algebra" begin
