@@ -181,7 +181,7 @@ function sparsehessian(
         simplify::Bool = false, full::Bool = true, kwargs...
     )
     H = SparseArrays.sparse(hessian(O, vars; simplify, kwargs...))
-    return full ? H : SparseArrays.tril(H)
+    return full ? H : tril(H)
 end
 
 # Public `lu` should select the existing symbolic factorization for the new atomic wrapper
