@@ -72,6 +72,35 @@ function (s::SymbolicUtils.Substituter)(x::Complex{Num})
     Complex{Num}(s(real(x)), s(imag(x)))
 end
 
+# Base's numerical complex elementary functions use value-dependent Boolean branches that
+# are invalid for symbolic components. Keep the explicit Cartesian representation closed
+# under the common elementary operations using branch-free analytic identities.
+function Base.exp(z::Complex{Num})
+    a, b = reim(z)
+    ea = exp(a)
+    return Complex(ea * cos(b), ea * sin(b))
+end
+function Base.sin(z::Complex{Num})
+    a, b = reim(z)
+    return Complex(sin(a) * cosh(b), cos(a) * sinh(b))
+end
+function Base.cos(z::Complex{Num})
+    a, b = reim(z)
+    return Complex(cos(a) * cosh(b), -sin(a) * sinh(b))
+end
+function Base.log(z::Complex{Num})
+    a, b = reim(z)
+    r = sqrt(a^2 + b^2)
+    return Complex(log(r), atan(b, a))
+end
+function Base.sqrt(z::Complex{Num})
+    a, b = reim(z)
+    r = sqrt(a^2 + b^2)
+    θ = atan(b, a) / 2
+    sr = sqrt(r)
+    return Complex(sr * cos(θ), sr * sin(θ))
+end
+
 # Explicit Cartesian symbolic values retain Cartesian output for noninteger real powers.
 # Use the principal polar branch instead of Base's numerical Complex implementation,
 # whose boolean control flow is not valid for symbolic components.
