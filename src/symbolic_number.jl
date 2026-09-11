@@ -38,6 +38,15 @@ Base.real(x::SymbolicNumber) = wrap(real(unwrap(x)))
 Base.imag(x::SymbolicNumber) = wrap(imag(unwrap(x)))
 Base.transpose(x::SymbolicNumber) = wrap(transpose(unwrap(x)))
 Base.adjoint(x::SymbolicNumber) = wrap(adjoint(unwrap(x)))
+# `angle` is real-valued even when its argument is a general numeric symbolic scalar.
+# SymbolicUtils does not currently register it among the standard monadic operations, so
+# construct the real-typed symbolic call explicitly at this wrapper boundary.
+Base.angle(x::SymbolicNumber) = Num(Term{VartypeT}(
+    angle, ArgsT{VartypeT}((unwrap(x),)); type = Real, shape = SymbolicUtils.ShapeVecT()
+))
+Base.sincospi(x::SymbolicNumber) = (sinpi(x), cospi(x))
+Base.numerator(x::SymbolicNumber) = wrap(numerator(unwrap(x)))
+Base.denominator(x::SymbolicNumber) = wrap(denominator(unwrap(x)))
 # `@number_methods` defines `^(::SymbolicNumber, ::Real)`, which intersects Base's
 # integer/rational power methods. Keep those powers on the symbolic algebra explicitly.
 Base.:^(x::SymbolicNumber, p::Integer) = wrap(unwrap(x)^p)
@@ -209,13 +218,17 @@ function linear_expansion(t, x::SymbolicNumber)
 end
 
 # A system whose unknowns are general numeric scalars may contain genuinely complex
-# coefficients. Use the existing symbolic LU algorithm with a homogeneous wide-wrapper
-# workspace instead of forcing the raw coefficient matrix through `Num`.
+# coefficients. Normalize equations to raw symbolic expressions before entering the
+# existing array linear-expansion algorithm, which deliberately operates on SymbolicT.
 function symbolic_linear_solve(
         eqs::AbstractArray, vars::AbstractArray{<:SymbolicNumber};
         simplify = false, check = true
     )
-    A, b, islinear = linear_expansion(eqs, unwrap.(vars))
+    raw_eqs = SymbolicT[
+        eq isa Equation ? unwrap(eq.rhs) - unwrap(eq.lhs) : unwrap(eq)
+        for eq in eqs
+    ]
+    A, b, islinear = linear_expansion(raw_eqs, unwrap.(vars))
     check && @assert islinear
     islinear || return nothing
 
