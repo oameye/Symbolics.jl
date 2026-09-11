@@ -1,0 +1,30 @@
+name: Atomic complex baseline QA
+on:
+  push:
+    branches:
+      - cert/atomic-symbolic-complex-baseline-1.13
+permissions:
+  contents: read
+
+env:
+  SYMBOLICUTILS_REV: cc57eb663347b4ce77c5db3c4041131b5c42f920
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1'
+      - name: Pin SymbolicUtils prerequisite
+        run: |
+          git clone https://github.com/oameye/SymbolicUtils.jl /tmp/SymbolicUtils.jl
+          git -C /tmp/SymbolicUtils.jl checkout $SYMBOLICUTILS_REV
+          julia --project=. -e 'using Pkg; Pkg.develop(path="/tmp/SymbolicUtils.jl")'
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+        env:
+          GROUP: QA
+        with:
+          force_latest_compatible_version: 'false'
