@@ -89,6 +89,12 @@ const SN = Symbolics.SymbolicNumber
         @test isone(simplify(H[1, 2]))
         @test isone(simplify(H[2, 1]))
         @test iszero(simplify(H[2, 2]))
+
+        Hs = Symbolics.sparsehessian(im * z^2 + z * w, [z, w])
+        @test Hs isa SparseMatrixCSC
+        @test iszero(simplify(Hs[1, 1] - 2im))
+        @test isone(simplify(Hs[1, 2]))
+        @test isone(simplify(Hs[2, 1]))
     end
 
     @testset "general numeric wrapper reaches symbolic linear algebra" begin
@@ -126,5 +132,19 @@ const SN = Symbolics.SymbolicNumber
         @test length(sols) == 2
         @test iszero(simplify(sols[1] - (1 + im) / 2))
         @test iszero(simplify(sols[2] - (1 - im) / 2))
+    end
+
+    @testset "semi-polynomial forms preserve complex coefficients" begin
+        @variables x::Real y::Real
+        expr = im * x + (1 + im) * y + 2
+
+        A, c = semilinear_form([expr], [x, y])
+        @test iszero(simplify(A[1, 1] - im))
+        @test iszero(simplify(A[1, 2] - (1 + im)))
+        @test iszero(simplify((A * [x, y] + c)[1] - expr))
+
+        qexpr = im * x^2 + (1 + im) * x * y + 2y + 3
+        Aq, Bq, v2, cq = semiquadratic_form([qexpr], [x, y])
+        @test iszero(simplify((Aq * [x, y] + Bq * v2 + cq)[1] - qexpr))
     end
 end
