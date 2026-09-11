@@ -218,3 +218,16 @@ function symbolic_linear_solve(
     sol = sym_lu(Aw) \ rhs
     return simplify ? SymbolicUtils.simplify_fractions.(sol) : sol
 end
+
+# Norms have a real codomain even when their elements are complex-capable symbolic values.
+# This bridge works for both Symbolics array wrappers and ordinary Julia arrays containing
+# `SymbolicNumber`s without imposing a wider representation on the result.
+function _unwrap_symbolic_number_array(A::AbstractArray{SymbolicNumber})
+    return iswrapped(A) ? unwrap(A) : unwrap.(A)
+end
+function LinearAlgebra.norm(A::AbstractArray{SymbolicNumber}, p::Real = 2)
+    wrap(LinearAlgebra.norm(_unwrap_symbolic_number_array(A), p))
+end
+function LinearAlgebra.norm(A::AbstractArray{SymbolicNumber}, p::Num)
+    wrap(LinearAlgebra.norm(_unwrap_symbolic_number_array(A), unwrap(p)))
+end
