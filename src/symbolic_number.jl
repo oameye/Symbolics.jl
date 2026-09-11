@@ -130,6 +130,12 @@ end
 function (s::SymbolicUtils.Substituter)(x::SymbolicNumber)
     wrap(s(unwrap(x)))
 end
+# The default substituter may widen a real `Num` expression when a replacement is complex.
+# Specialize that concrete path so it selects the wrapper from the substituted symtype
+# instead of forcing the result back through `Num`.
+function (s::SymbolicUtils.DefaultSubstituter)(x::Num)
+    wrap(s(unwrap(x)))
+end
 
 # High-level APIs historically reconstructed all symbolic derivatives as `Num`. Keep the
 # existing real-valued paths unchanged and bridge only the wider scalar wrapper through the
