@@ -97,6 +97,17 @@ end
     return recipe(value(n))
 end
 
+@latexrecipe function f(n::Symbolics.SymbolicNumber)
+    env --> :equation
+    mult_symbol --> "~"
+    fmt --> FancyNumberFormatter(5)
+    index --> :subscript
+    snakecase --> true
+    safescripts --> true
+
+    return recipe(unwrap(n))
+end
+
 @latexrecipe function f(z::Complex{Num})
     env --> :equation
     mult_symbol --> "~"
