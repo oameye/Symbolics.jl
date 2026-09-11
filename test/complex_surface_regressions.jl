@@ -59,6 +59,37 @@ const SN = Symbolics.SymbolicNumber
         @test occursin("exp", phasetex) || occursin("e", lowercase(phasetex))
     end
 
+    @testset "numeric codomains narrow and widen correctly" begin
+        @variables z::Complex
+        @test real(z) isa Num
+        @test imag(z) isa Num
+        @test abs(z) isa Num
+        @test abs2(z) isa Num
+        @test angle(z) isa Num
+        @test conj(z) isa SN
+    end
+
+    @testset "explicit Cartesian representation remains interoperable" begin
+        @variables a::Real b::Real z::Complex
+        cart = Complex(a, b)
+        @test cart isa Complex{Num}
+
+        value = 0.7 + 1.3im
+        for fop in (exp, sin, cos, log, sqrt)
+            ex = fop(cart)
+            fn = build_function(ex, a, b; expression = Val(false))
+            @test fn(real(value), imag(value)) ≈ fop(value)
+        end
+
+        mixed = z + cart
+        @test mixed isa SN
+        fmixed = build_function(mixed, z, a, b; expression = Val(false))
+        @test fmixed(0.2 - 0.4im, real(value), imag(value)) ≈ 0.2 - 0.4im + value
+
+        promoted = [z, cart]
+        @test eltype(promoted) == SN
+    end
+
     @testset "general numeric wrapper reaches high-level differentiation" begin
         @variables z::Complex w::Complex
 
