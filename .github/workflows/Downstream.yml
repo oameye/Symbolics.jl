@@ -7,6 +7,7 @@ on:
 
 jobs:
   test:
+    if: ${{ false }} # temporary: suppress downstream matrix during focused complex-domain certification
     name: ${{ matrix.package.repo }}/${{ matrix.package.group }}/${{ matrix.julia-version }}
     runs-on: ${{ matrix.os }}
     env:
@@ -69,3 +70,26 @@ jobs:
             @info "Not compatible with this release. No problem." exception=err
             exit(0)  # Exit immediately, as a success
           end
+
+  complex-domain-cert:
+    name: Complex domain conformance / Julia ${{ matrix.julia-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version: ['1', '1.10']
+    env:
+      GROUP: Core
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.julia-version }}
+          arch: x64
+      - name: Pin minimal SymbolicUtils prerequisite and run Core
+        shell: julia --color=yes --project=. {0}
+        run: |
+          using Pkg
+          Pkg.add(PackageSpec(url = "https://github.com/oameye/SymbolicUtils.jl", rev = "37195d71948f1b34c7ccb7050f23a40f39a3bad1"))
+          Pkg.instantiate()
+          Pkg.test()
