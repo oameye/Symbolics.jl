@@ -83,8 +83,8 @@ function Base.:~(lhs, rhs)
         Equation(lhs, rhs)
     end
 end
-for T in [:Num, :Complex, :Number], S in [:Num, :Complex, :Number]
-    (T != :Complex && S != :Complex) && continue
+for T in [:Num, :Complex, :SymbolicNumber, :Number], S in [:Num, :Complex, :SymbolicNumber, :Number]
+    (T ∉ (:Complex, :SymbolicNumber) && S ∉ (:Complex, :SymbolicNumber)) && continue
     @eval Base.:~(a::$T, b::$S) = let ar = value(real(a)), br = value(real(b)),
                                       ai = value(imag(a)), bi = value(imag(b))
         if ar isa Number && br isa Number && ai isa Number && bi isa Number
