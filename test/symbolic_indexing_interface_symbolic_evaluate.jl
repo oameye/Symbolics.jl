@@ -35,3 +35,24 @@ expr4 = D(x) ~ 3x + y
 @test isequal(symbolic_evaluate(expr4, Dict(x => 3); operator = Operator), D(x) ~ y + 9)
 @test isequal(symbolic_evaluate(expr4, Dict(x => 1, D(x) => 2)), 2 ~ 3 + y)
 @test isequal(symbolic_evaluate(expr4, Dict(x => 1, D(x) => 2, y => 3)), 2 ~ 6)
+
+# General numeric symbolic scalars participate in the same indexing interface as Num.
+@variables z::Number
+expr5 = 1 + im * z
+@test symbolic_type(typeof(z)) == ScalarSymbolic()
+@test symbolic_type(typeof(expr5)) == ScalarSymbolic()
+@test isequal(symbolic_evaluate(z, Dict(z => im)), im)
+@test isequal(symbolic_evaluate(expr5, Dict(z => 2)), 1 + 2im)
+
+# Regression for #1950: complex-valued matrix substitutions must remain symbolic arrays
+# so variable discovery can see symbolic entries.
+θ, λ = @variables θ::Real λ::Real
+real_f = Symbolics.variable(:real_f; T = Symbolics.FnType{Tuple{Vararg{Number}}, Number, Nothing})(θ)
+complex_f = Symbolics.variable(:complex_f; T = Symbolics.FnType{Tuple{Vararg{Number}}, Number, Nothing})(λ)
+real_mat = Matrix([exp(θ) 0.0; 0.0 0.0])
+complex_mat = Matrix([exp(im * λ) 0.0; 0.0 0.0])
+expr6 = real_f * complex_f
+real_subs = substitute(expr6, Dict(real_f => real_mat))
+complex_subs = substitute(expr6, Dict(complex_f => complex_mat))
+@test θ in get_variables(real_subs)
+@test λ in get_variables(complex_subs)
