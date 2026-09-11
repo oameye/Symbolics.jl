@@ -1,0 +1,68 @@
+name: Atomic complex v2 final certification
+on:
+  push:
+    branches:
+      - cert/atomic-symbolic-complex-v2-final
+permissions:
+  contents: read
+
+env:
+  SYMBOLICUTILS_REV: cc57eb663347b4ce77c5db3c4041131b5c42f920
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [Core, QA, Downstream, GroebnerExt, SymPy, SymPyPythonCall, D3TreesExt]
+        version: ['1']
+        include:
+          - group: QA
+            version: '1.10'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+      - name: Pin SymbolicUtils prerequisite
+        run: |
+          git clone https://github.com/oameye/SymbolicUtils.jl /tmp/SymbolicUtils.jl
+          git -C /tmp/SymbolicUtils.jl checkout $SYMBOLICUTILS_REV
+          julia --project=. -e 'using Pkg; Pkg.develop(path="/tmp/SymbolicUtils.jl")'
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+        env:
+          GROUP: ${{ matrix.group }}
+        with:
+          force_latest_compatible_version: 'false'
+
+  test-x86:
+    name: Core (julia 1, ubuntu-latest, x86)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Install 32-bit runtime libraries (i386)
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libc6:i386 libstdc++6:i386 libgcc-s1:i386 libatomic1:i386
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1'
+          arch: x86
+      - name: Pin SymbolicUtils prerequisite
+        run: |
+          git clone https://github.com/oameye/SymbolicUtils.jl /tmp/SymbolicUtils.jl
+          git -C /tmp/SymbolicUtils.jl checkout $SYMBOLICUTILS_REV
+          julia --project=. -e 'using Pkg; Pkg.develop(path="/tmp/SymbolicUtils.jl")'
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+        env:
+          GROUP: Core
+        with:
+          force_latest_compatible_version: 'false'
