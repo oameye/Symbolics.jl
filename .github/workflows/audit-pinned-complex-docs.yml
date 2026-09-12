@@ -1,0 +1,30 @@
+name: Audit pinned complex docs
+
+on:
+  push:
+    branches:
+      - audit/docs-su-4.46.5-complex
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: '1'
+      - name: Instantiate docs with exact SymbolicUtils complex prerequisite
+        shell: bash
+        run: |
+          julia --project=docs/ -e '
+            using Pkg
+            Pkg.develop(PackageSpec(path=pwd()))
+            Pkg.add(PackageSpec(
+                url = "https://github.com/oameye/SymbolicUtils.jl",
+                rev = "ef5dedc13b48f0cb64ec4442d127e884571d05e8",
+            ))
+            Pkg.instantiate()
+          '
+      - name: Build documentation
+        shell: bash
+        run: julia --project=docs/ docs/make.jl
