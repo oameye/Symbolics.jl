@@ -23,7 +23,7 @@ jobs:
             Pkg.develop(PackageSpec(path=pwd()))
             Pkg.add(PackageSpec(
                 url = "https://github.com/oameye/SymbolicUtils.jl",
-                rev = "ef5dedc13b48f0cb64ec4442d127e884571d05e8",
+                rev = "c3eb9022d66483cff26bab66a9ad8174948b7e08",
             ))
             Pkg.instantiate()
           '
