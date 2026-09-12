@@ -1,0 +1,42 @@
+name: Audit base complex diagnostics
+
+on:
+  push:
+    branches:
+      - audit/base-complex-diagnostics
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: '1'
+      - name: Instantiate
+        shell: bash
+        run: julia --project=. -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+      - name: Diagnose complex domains and filter_poly
+        shell: bash
+        run: |
+          julia --project=. -e '
+            using Symbolics, SymbolicUtils
+            @variables x y z
+            ex = (1/im) * x + 3*y*z
+            println("EX_TYPE=", typeof(ex))
+            println("EX_SYMTYPE=", SymbolicUtils.symtype(Symbolics.unwrap(ex)))
+            println("EX=", ex)
+            println("EX_REAL=", real(ex))
+            println("EX_IMAG=", imag(ex))
+            fp = Symbolics.filter_poly(ex, x)
+            println("FILTER_SUBS_LEN=", length(fp[1]))
+            println("FILTER_SUBS=", fp[1])
+            println("FILTER_EXPR=", fp[2])
+            @variables t
+            @variables X(t)::Complex
+            D = Differential(t)
+            println("X_TYPE=", typeof(X))
+            println("X_SYMTYPE=", SymbolicUtils.symtype(Symbolics.unwrap(X)))
+            println("DX_TYPE=", typeof(D(X)))
+            println("DX_SYMTYPE=", SymbolicUtils.symtype(Symbolics.unwrap(D(X))))
+          '
