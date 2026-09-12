@@ -1,0 +1,52 @@
+name: Audit filter_poly numeric-domain fix
+
+on:
+  push:
+    branches:
+      - audit/filter-poly-fix-driver
+
+jobs:
+  patch-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: '1'
+      - name: Materialize one-line fix and certify historical cases
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "audit-bot"
+          git config user.email "audit@example.invalid"
+          git checkout --detach 38cdc43bb63bdd0d73a41c5caa8d83939929dd07
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/solver/preprocess.jl')
+          s = p.read_text()
+          old = '    if symtype(expr) <: Complex\n'
+          new = '    if symtype(expr) <: Number && !(symtype(expr) <: Real)\n'
+          assert s.count(old) == 1, s.count(old)
+          p.write_text(s.replace(old, new))
+          PY
+          git diff --check
+          git diff -- src/solver/preprocess.jl
+          julia -e '
+            using Pkg
+            env = mktempdir()
+            Pkg.activate(env)
+            Pkg.develop(PackageSpec(path=pwd()))
+            Pkg.add(PackageSpec(url="https://github.com/oameye/SymbolicUtils.jl", rev="ef5dedc13b48f0cb64ec4442d127e884571d05e8"))
+            Pkg.instantiate(; allow_autoprecomp=false)
+            using Symbolics, SymbolicUtils, Test
+            @variables x y z
+            @test length(Symbolics.filter_poly(x + 2im, x)[1]) == 1
+            @test length(Symbolics.filter_poly((1/im)*x + 3*y*z, x)[1]) == 1
+            @test length(Symbolics.filter_poly((x+1)*SymbolicUtils.term(log, 3), x)[1]) == 1
+            println("FILTER_POLY_COMPLEX_CASES_GREEN")
+          '
+          git add src/solver/preprocess.jl
+          git commit -m "fix: filter potentially complex polynomial expressions"
+          git push --force origin HEAD:refs/heads/audit/filter-poly-fix-result
