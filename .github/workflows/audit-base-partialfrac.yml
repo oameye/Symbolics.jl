@@ -15,12 +15,12 @@ jobs:
           version: '1'
       - name: Instantiate
         shell: bash
-        run: julia --project=. -e 'using Pkg; Pkg.instantiate(; allow_autoprecomp=false)'
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate(; allow_autoprecomp=false); Pkg.add("Nemo")'
       - name: Run partial-fraction examples
         shell: bash
         run: |
           julia --project=. -e '
-            using Symbolics
+            using Symbolics, Nemo
             @variables x
             println("SYMBOLICUTILS_VERSION_CHECK")
             using SymbolicUtils
