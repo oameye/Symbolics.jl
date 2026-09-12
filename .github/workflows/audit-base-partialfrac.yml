@@ -1,0 +1,32 @@
+name: Audit base partial fractions on SymbolicUtils 4.46.5
+
+on:
+  push:
+    branches:
+      - audit/base-partialfrac-4.46.5
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: '1'
+      - name: Instantiate
+        shell: bash
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate(; allow_autoprecomp=false)'
+      - name: Run partial-fraction examples
+        shell: bash
+        run: |
+          julia --project=. -e '
+            using Symbolics
+            @variables x
+            println("SYMBOLICUTILS_VERSION_CHECK")
+            using SymbolicUtils
+            println(Base.pkgversion(SymbolicUtils))
+            for ex in ((3x-1)/(x^2+x-6), (4x^3+16x+7)/(x^2+4)^2, (4x^2-22x+7)/((2x+3)*(x-2)^2))
+                println("INPUT=", ex)
+                println("OUTPUT=", partial_frac_decomposition(ex, x))
+            end
+          '
