@@ -1,0 +1,34 @@
+name: Audit final complex stack
+
+on:
+  push:
+    branches:
+      - audit/final-complex-stack
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version: ['1', '1.10']
+    env:
+      GROUP: Core
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: ${{ matrix.julia-version }}
+      - name: Pin exact SymbolicUtils prerequisite
+        shell: bash
+        run: |
+          julia --project=. -e '
+            using Pkg
+            Pkg.add(PackageSpec(
+                url = "https://github.com/oameye/SymbolicUtils.jl",
+                rev = "c3eb9022d66483cff26bab66a9ad8174948b7e08",
+            ))
+          '
+      - name: Run Core tests
+        shell: bash
+        run: julia --project=. -e 'using Pkg; Pkg.test()'
