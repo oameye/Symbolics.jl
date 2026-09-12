@@ -124,7 +124,7 @@ function _filter_poly(expr, var)
     end
 
     args = copy(parent(arguments(expr)))
-    if symtype(expr) <: Complex
+    if symtype(expr) <: Number && !(symtype(expr) <: Real)
         subs1, subs2 = Dict(), Dict()
         expr1, expr2 = 0, 0
         rr = real(expr)
