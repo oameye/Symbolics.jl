@@ -15,7 +15,7 @@ jobs:
           version: '1'
       - name: Instantiate
         shell: bash
-        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate(; allow_autoprecomp=false)'
       - name: Diagnose complex domains and filter_poly
         shell: bash
         run: |
