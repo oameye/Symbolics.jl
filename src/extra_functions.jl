@@ -43,6 +43,7 @@ for T1 in [Real, Num, BasicSymbolic{VartypeT}], T2 in [AbstractArray, Arr, Basic
 end
 Base.in(x::Num, y::AbstractArray) = SymbolicUtils.term(in, unwrap(x), y)
 Base.in(x::Num, y::Array) = SymbolicUtils.term(in, unwrap(x), y)
+Base.in(x::Num, y::Base.ReshapedArray) = SymbolicUtils.term(in, unwrap(x), y)
 Base.in(x::Num, y::SparseArrays.AbstractSparseArray) = SymbolicUtils.term(in, unwrap(x), y)
 Base.in(x::Num, y::AbstractRange{Num}) = SymbolicUtils.term(in, unwrap(x), y)
 Base.in(x::Num, y::AbstractRange{<:Real}) = SymbolicUtils.term(in, unwrap(x), y)
@@ -76,7 +77,7 @@ for f in (
     )
     @eval begin
         (f::$(typeof(f)))(a::Num, b::AbstractFloat) = invoke(f, Tuple{Num, Real}, a, b)
-        (f::$(typeof(f)))(a::Num, b::Complex) = invoke(f, Tuple{Num, Number}, a, b)
+        (f::$(typeof(f)))(a::Num, b::Complex) = wrap(f(unwrap(a), b))
     end
 end
 for T in (Signed, Rational, Float32, Float64)
